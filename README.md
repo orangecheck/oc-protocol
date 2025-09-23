@@ -39,15 +39,38 @@ issued_at: <ISO8601_UTC_Z>
 ack: I understand this links this address to my identity.
 ```
 
+### Field definitions
 
-**Field intent**
-- `npub:` Optional identity hint (e.g., `npub1…`, `twitter:@alice`, `web:alice.dev`). Free-form ≤ 256 bytes.  
-- `address:` Mainnet singlesig (P2WPKH `bc1q…`, P2TR `bc1p…`, or legacy P2PKH `1…`).  
-- `nonce:` 16 bytes random, lowercase hex (32 chars).  
-- `issued_at:` RFC-3339 / ISO-8601 UTC (e.g., `2025-03-21T18:04:09.000Z`).  
-- `purpose:` & `ack:` fix intent and make the link explicit.  
+1. **Protocol header:** `orangecheck v0`  
+   - Identifies the schema/version being signed. Verifiers **MUST** require this exact header for v0.
 
-Issuers **MUST** prevent editing of wording/order once generated.
+2. **`npub:` `<IDENTITY_HINT_OR_EMPTY>` (optional)**  
+   - A portable label bound to the proof: e.g., a Nostr `npub1…`, or a scoped handle like `twitter:@alice` or `web:alice.dev`.  
+   - Free-form UTF-8, **≤ 256 bytes**. Empty is allowed. It is **inside** the signature.
+
+3. **`address:` `<BITCOIN_ADDRESS>` (required)**  
+   - The **mainnet singlesig** address whose control is being proven:  
+     - P2WPKH `bc1q…` (bech32), P2TR `bc1p…` (taproot), or legacy P2PKH `1…`.  
+   - Verifiers **MUST** reject non-mainnet in v0 (unless testing via v0+ext `network:`).
+
+4. **`purpose:` `public reputation bond (non-custodial)`**  
+   - Declares intent and reduces signature replay ambiguity across contexts.  
+   - Exact wording **MUST NOT** change in v0.
+
+5. **`nonce:` `<RANDOM_16B_HEX_LOWER>` (required)**  
+   - 16 random bytes encoded as **32 lowercase hex chars**. Prevents trivial replay and binds uniqueness.
+
+6. **`issued_at:` `<ISO8601_UTC_Z>` (required)**  
+   - RFC-3339 / ISO-8601 UTC timestamp (e.g., `2025-03-21T18:04:09.000Z`).  
+   - Used for audit, display, and optional freshness checks.
+
+7. **`ack:` `I understand this links this address to my identity.` (fixed)**  
+   - Explicit acknowledgement of linking the address to the provided label.  
+   - Exact wording **MUST NOT** change in v0.
+
+> **Canonicalization:** Key names, order, punctuation, spacing, and line endings (LF) are **normative**. Any deviation invalidates the signature.
+
+Issuers **MUST** prevent edits to wording/order after generation and include a final newline.
 
 ---
 
