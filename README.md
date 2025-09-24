@@ -15,7 +15,6 @@
   - [Verify (check) a proof](#verify-check-a-proof)
   - [Embed a badge](#embed-a-badge)
 - [Specs vs Protocol](#specs-vs-protocol)
-- [Conformance & Test Vectors](#conformance--test-vectors)
 - [Extension Key Registry](#extension-key-registry)
 - [Versioning](#versioning)
 - [Security & Privacy Notes](#security--privacy-notes)
@@ -43,9 +42,6 @@ If you’re new, start with **[PROTOCOL.md](./PROTOCOL.md)** (the “what & why�
 oc-protocol/
 ├─ PROTOCOL.md        # high-level rationale, rules, lifecycle, invariants
 ├─ SPEC.md            # normative v0 spec (canonical message, wire formats, algorithms)
-├─ conformance/       # machine-checkable tests
-│  ├─ vectors/        # tv1.json, tv2.json, ...
-│  └─ runner/         # script to run vectors against an implementation
 └─ registry/
    └─ extensions.md   # registered extension keys (`aud`, `cap`, `expires`, ...)
 ```
@@ -97,24 +93,6 @@ A minimal verifier MUST:
 - **Spec** = the formal, testable description of how to interoperate. See **[SPEC.md](./SPEC.md)**.
 
 Say “OrangeCheck Protocol” when referring to the system; publish and target the **Spec v0** for implementation.
-
----
-
-## Conformance & Test Vectors
-
-- Conformance is defined by **`SPEC.md §8`**.  
-- Test vectors live in **`/conformance/vectors`** and cover valid/invalid cases, both schemes, and policy outcomes.  
-- The **runner** in `/conformance/runner` should accept your verifier as a CLI/HTTP target and report pass/fail per vector.
-
-**Example (illustrative):**
-```bash
-# Run your verifier against vectors
-node conformance/runner/run.js --target http://localhost:8080/verify
-# or
-python conformance/runner/run.py --target ./dist/verifier-cli
-```
-
-> Please contribute new vectors for edge cases (encoding, LF handling, unsorted extensions, legacy corner‑cases, etc.).
 
 ---
 
