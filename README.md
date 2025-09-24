@@ -9,7 +9,6 @@
 ## Table of Contents
 
 - [What is OrangeCheck?](#what-is-orangecheck)
-- [Repo Structure](#repo-structure)
 - [Quick Start](#quick-start)
   - [Issue (create) a proof](#issue-create-a-proof)
   - [Verify (check) a proof](#verify-check-a-proof)
@@ -33,20 +32,6 @@ OrangeCheck is a **portable, self‑sovereign reputation signal** for the web:
 - A simple, versioned **score** is provided for UX comparability. No spend, no KYC, no accounts.
 
 If you’re new, start with **[PROTOCOL.md](./PROTOCOL.md)** (the “what & why”) and then implement against **[SPEC.md](./SPEC.md)** (the “how”).
-
----
-
-## Repo Structure
-
-```
-oc-protocol/
-├─ PROTOCOL.md        # high-level rationale, rules, lifecycle, invariants
-├─ SPEC.md            # normative v0 spec (canonical message, wire formats, algorithms)
-└─ registry/
-   └─ extensions.md   # registered extension keys (`aud`, `cap`, `expires`, ...)
-```
-
-> **Tip:** Treat `SPEC.md` as the source of truth. Reference code is *informative* only. Conformance is determined by tests in `/conformance`.
 
 ---
 
