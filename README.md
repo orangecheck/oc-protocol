@@ -17,7 +17,6 @@
 - [Specs vs Protocol](#specs-vs-protocol)
 - [Conformance & Test Vectors](#conformance--test-vectors)
 - [Extension Key Registry](#extension-key-registry)
-- [Reference Implementations](#reference-implementations)
 - [Versioning](#versioning)
 - [Security & Privacy Notes](#security--privacy-notes)
 - [Contributing](#contributing)
@@ -130,17 +129,6 @@ Registered keys (v0): `aud`, `cap`, `expires`, `network`, `scope`.
 
 ---
 
-## Reference Implementations
-
-Under `/reference` you’ll find minimal examples:
-
-- **Issuer**: builds canonical text, collects signature from a wallet, emits link/JSON.
-- **Verifier**: loads proof, verifies signature locally, queries UTXOs, displays status & score.
-
-> These are **informative** examples to help you get started, not normative source of truth.
-
----
-
 ## Versioning
 
 - Protocol header string `orangecheck v0` and the seven core lines are **frozen for v0**.
@@ -163,15 +151,6 @@ Under `/reference` you’ll find minimal examples:
 - Read **[SPEC.md](./SPEC.md)** first; proposals must not break canonicalization.  
 - Open issues/PRs with **clear diffs** and, where applicable, **new test vectors**.  
 - For new extension keys, update **`/registry/extensions.md`** and provide conformance cases.
-
-### Development (suggested)
-
-```bash
-pnpm i
-pnpm -C reference/issuer dev
-pnpm -C reference/verifier dev
-pnpm -C conformance/runner test
-```
 
 ---
 
