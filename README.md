@@ -188,10 +188,14 @@ pnpm -C conformance/runner test
 
 ## FAQ
 
-**Do coins move?** No. Message signing only; funds remain in your wallet.  
+**Do coins move?** No. Message signing only; funds remain in your wallet.
+
 **Which wallets are supported?** Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.  
+
 **What exactly does a badge prove?** (1) Control of the address (signature). (2) At verification time there are **confirmed, unspent** sats there. From that we compute **sats_bonded**, **days_unspent**, and **score v0**.  
+
 **Can I hide the address?** Not in v0. Transparency enables universal recomputation. Use fresh addresses and rotate.  
+
 **Mainnet only?** Yes by default. Use `network: signet` **only** for testing (and verifiers must be in test mode).
 
 ---
