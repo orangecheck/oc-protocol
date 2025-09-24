@@ -44,9 +44,6 @@ If you’re new, start with **[PROTOCOL.md](./PROTOCOL.md)** (the “what & why�
 oc-protocol/
 ├─ PROTOCOL.md        # high-level rationale, rules, lifecycle, invariants
 ├─ SPEC.md            # normative v0 spec (canonical message, wire formats, algorithms)
-├─ reference/         # informative examples (issuer + verifier)
-│  ├─ issuer/         # minimal message builder UI
-│  └─ verifier/       # minimal web verifier (loads a proof link/JSON)
 ├─ conformance/       # machine-checkable tests
 │  ├─ vectors/        # tv1.json, tv2.json, ...
 │  └─ runner/         # script to run vectors against an implementation
