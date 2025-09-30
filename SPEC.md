@@ -195,17 +195,69 @@ Given `(addr, msg, sig, scheme)`:
 6. **Result**  
    - Return status + metrics (see §7).
 
-**Determinism.** Verifiers SHOULD round `score_v0` to 2 decimals and display `sc=v0` alongside.
+**Determinism.** Verifiers SHOULD round metrics to appropriate precision for display.
 
 ---
 
-## 6) Scoring **(normative for v0 label)**
+## 6) Metrics & Scoring **(normative)**
+
+### 6.1 Required Metrics
+
+Verifiers **MUST** compute and return:
+
+- **`sats_bonded`** (integer) — Sum of confirmed, unspent UTXO values at the address
+- **`days_unspent`** (integer) — Floor of days since earliest confirmation time among active UTXOs
+
+These raw metrics are the **source of truth** for all reputation assessment.
+
+### 6.2 Optional Scoring
+
+Verifiers **MAY** compute additional scores to aid UX and comparison. If scores are provided:
+
+- Scores **MUST** include an algorithm identifier (e.g., `score_v0`, `score_tier`)
+- Scores **MUST NOT** be assumed comparable across different algorithms
+- Scores **SHOULD** be documented with their formula or logic
+
+### 6.3 Reference Score (score_v0)
+
+The protocol defines a reference scoring algorithm for interoperability:
 
 ```
 score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
 ```
 
-`sc` parameter/value **MUST** be displayed wherever the score is shown. Different scoring versions are **not** comparable.
+**Output:** Decimal number (typically 10-250)
+
+**Interpretation:**
+- 10-20: Low commitment
+- 20-50: Medium commitment
+- 50-100: Good commitment
+- 100+: Excellent commitment
+
+Verifiers implementing `score_v0` **MUST** use this exact formula.
+
+### 6.4 Alternative Scoring Algorithms
+
+RPs are encouraged to compute scores tailored to their use case. See `/registry/scoring.md` for:
+- Registered algorithms (`tier`, `time-weighted`, `amount-weighted`, etc.)
+- Formula specifications
+- Use case guidance
+
+The `scoring:` extension (§2.2) allows Subjects to suggest a preferred algorithm, but RPs **MUST** validate raw metrics independently.
+
+### 6.5 Display Requirements
+
+When displaying scores:
+- **MUST** show the algorithm identifier (e.g., "Score: 55.3 (v0)" or "Tier: Gold")
+- **SHOULD** provide explanation of what the score means
+- **MAY** show raw metrics alongside scores for transparency
+
+### 6.6 Security Considerations
+
+- RPs **MUST NOT** trust scores without validating `sats_bonded` and `days_unspent`
+- Scores are **advisory** interpretations, not cryptographic proofs
+- Different algorithms may be vulnerable to different gaming strategies
+- RPs should choose algorithms that align with their threat model
 
 ---
 

@@ -89,15 +89,34 @@ Spends naturally update the active UTXO set and can reset the streak.
 - **Network privacy.** Verifiers query public Esplora endpoints; Tor/VPN recommended where appropriate.
 - **Phishing resistance.** RPs may enforce `aud:` extension to bind proofs to an origin.
 
-## 8) Scoring Guidance (advisory)
+## 8) Metrics & Scoring (advisory)
 
-For UX parity, Verifiers **SHOULD** implement:
+### Raw Metrics (Required)
+
+Verifiers **MUST** return raw metrics:
+- **`sats_bonded`** — Sum of confirmed UTXOs
+- **`days_unspent`** — Days since earliest UTXO
+
+These are the **source of truth**. RPs validate these, not scores.
+
+### Scoring (Optional)
+
+Verifiers **MAY** compute scores. The protocol provides a reference algorithm:
 
 ```
 score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
 ```
 
-Scores are **versioned** independently (`sc=v0`). RPs must not assume scores are comparable across versions.
+**However, RPs are encouraged to compute scores tailored to their use case:**
+
+- **Forums:** Simple threshold (`sats >= 10k AND days >= 30`)
+- **Marketplaces:** Time-weighted (emphasize long-term commitment)
+- **Social media:** Tier badges (Bronze/Silver/Gold/Platinum)
+- **Lending:** Amount-weighted (emphasize capital)
+
+See `/registry/scoring.md` for registered algorithms and guidance.
+
+Scores are **versioned** independently (e.g., `score_v0`, `score_tier`). Different algorithms are **not** comparable.
 
 ## 9) Versioning & Extensibility
 

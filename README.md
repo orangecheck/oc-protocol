@@ -2,7 +2,7 @@
 
 *A tiny, Bitcoin‑native proof of “skin in the game.” Sign one message, prove control of an address, and let anyone recompute sats + time from public chain data. No accounts. No custody. No spend.*
 
-[![Status](https://img.shields.io/badge/status-draft_v0-informational)](#) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#) 
+[![Status](https://img.shields.io/badge/status-draft_v0-informational)](#) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
 
 ---
 
@@ -10,11 +10,12 @@
 
 - [What is OrangeCheck?](#what-is-orangecheck)
 - [Quick Start](#quick-start)
-  - [Issue (create) a proof](#issue-create-a-proof)
-  - [Verify (check) a proof](#verify-check-a-proof)
-  - [Embed a badge](#embed-a-badge)
+    - [Issue (create) a proof](#issue-create-a-proof)
+    - [Verify (check) a proof](#verify-check-a-proof)
+    - [Embed a badge](#embed-a-badge)
 - [Specs vs Protocol](#specs-vs-protocol)
 - [Extension Key Registry](#extension-key-registry)
+- [Scoring Algorithms](#scoring-algorithms)
 - [Versioning](#versioning)
 - [Security & Privacy Notes](#security--privacy-notes)
 - [Contributing](#contributing)
@@ -42,11 +43,11 @@ If you’re new, start with **[PROTOCOL.md](./PROTOCOL.md)** (the “what & why�
 1. Construct the **canonical message** exactly as in `SPEC.md §2` (7 core lines; LF line endings; one trailing LF; optional sorted extensions).
 2. Ask the wallet to **sign the full text** (prefer **BIP‑322**; allow legacy `signmessage` only for `1…` addresses).
 3. Package the tuple `(addr, msg, sig, scheme)` in either:
-   - a **Verify URL**:  
-     ```
-     /verify?addr=<ADDR>&msg=<BASE64URL_UTF8_MSG>&sig=<SIG>&scheme=<SCHEME>&sc=v0
-     ```
-   - an **Envelope JSON** per `SPEC.md §4.2`.
+    - a **Verify URL**:
+      ```
+      /verify?addr=<ADDR>&msg=<BASE64URL_UTF8_MSG>&sig=<SIG>&scheme=<SCHEME>&sc=v0
+      ```
+    - an **Envelope JSON** per `SPEC.md §4.2`.
 
 > An Issuer UI should auto‑fill `nonce` (16B hex), `issued_at` (RFC‑3339 UTC), and optionally add extensions (`aud`, `expires`, etc.).
 
@@ -58,23 +59,23 @@ A minimal verifier MUST:
 2. Verify **signature** for `(addr, msg)` (BIP‑322 first → legacy for `1…` only).
 3. Fetch **confirmed, unspent UTXOs** for `addr` (Esplora‑compatible endpoints).
 4. Compute:
-   - `sats_bonded` (sum of values)
-   - `days_unspent` (from earliest confirmation time)
-   - `score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )`
+    - `sats_bonded` (sum of values)
+    - `days_unspent` (from earliest confirmation time)
+    - `score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )`
 5. Optionally enforce **policy**: `aud` match, future `expires`, `cap` thresholds.
 6. Display status + metrics, and include `sc=v0` wherever the score appears.
 
 ### Embed a badge
 
-- Render a compact badge showing **Signature status • Sats • Streak • Score v0**.  
-- Link the badge to your **verify URL** so anyone can recompute on click.  
+- Render a compact badge showing **Signature status • Sats • Streak • Score v0**.
+- Link the badge to your **verify URL** so anyone can recompute on click.
 - Encourage users to **rotate**: fresh address per badge; retire by spending.
 
 ---
 
 ## Specs vs Protocol
 
-- **Protocol** = the live ruleset and lifecycle (what participants do). See **[PROTOCOL.md](./PROTOCOL.md)**.  
+- **Protocol** = the live ruleset and lifecycle (what participants do). See **[PROTOCOL.md](./PROTOCOL.md)**.
 - **Spec** = the formal, testable description of how to interoperate. See **[SPEC.md](./SPEC.md)**.
 
 Say “OrangeCheck Protocol” when referring to the system; publish and target the **Spec v0** for implementation.
@@ -89,6 +90,12 @@ Registered keys (v0): `aud`, `cap`, `expires`, `network`, `scope`.
 
 - See **`/registry/extensions.md`** for semantics and security notes.
 - Propose new keys via PR including: motivation, verifier behavior, security considerations, and conformance tests.
+
+---
+
+## Scoring Algorithms
+
+OrangeCheck provides a **reference scoring algorithm** for interoperability (`score_v0`), but RPs are encouraged to compute scores tailored to their use case. See **`/registry/scoring.md`** for registered algorithms and guidance.
 
 ---
 
@@ -111,16 +118,16 @@ Registered keys (v0): `aud`, `cap`, `expires`, `network`, `scope`.
 
 ## Contributing
 
-- Read **[SPEC.md](./SPEC.md)** first; proposals must not break canonicalization.  
-- Open issues/PRs with **clear diffs** and, where applicable, **new test vectors**.  
+- Read **[SPEC.md](./SPEC.md)** first; proposals must not break canonicalization.
+- Open issues/PRs with **clear diffs** and, where applicable, **new test vectors**.
 - For new extension keys, update **`/registry/extensions.md`** and provide conformance cases.
 
 ---
 
 ## License
 
-- **Protocol & Spec text**: CC‑BY‑4.0  
-- **Reference code**: MIT  
+- **Protocol & Spec text**: CC‑BY‑4.0
+- **Reference code**: MIT
 - “OrangeCheck” name/logo: trademark of their owners; do not imply endorsement.
 
 ---
@@ -129,11 +136,11 @@ Registered keys (v0): `aud`, `cap`, `expires`, `network`, `scope`.
 
 **Do coins move?** No. Message signing only; funds remain in your wallet.
 
-**Which wallets are supported?** Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.  
+**Which wallets are supported?** Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.
 
-**What exactly does a badge prove?** (1) Control of the address (signature). (2) At verification time there are **confirmed, unspent** sats there. From that we compute **sats_bonded**, **days_unspent**, and **score v0**.  
+**What exactly does a badge prove?** (1) Control of the address (signature). (2) At verification time there are **confirmed, unspent** sats there. From that we compute **sats_bonded**, **days_unspent**, and **score v0**.
 
-**Can I hide the address?** Not in v0. Transparency enables universal recomputation. Use fresh addresses and rotate.  
+**Can I hide the address?** Not in v0. Transparency enables universal recomputation. Use fresh addresses and rotate.
 
 **Mainnet only?** Yes by default. Use `network: signet` **only** for testing (and verifiers must be in test mode).
 

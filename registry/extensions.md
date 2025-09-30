@@ -36,6 +36,22 @@ All keys are **lowercase ASCII** and extensions appear **sorted lexicographicall
 - **Purpose:** Human context label (e.g., `twitter:@alice`, `web:alice.dev`).
 - **Verifier behavior:** Display only.
 
+### `scoring`
+- **Type:** string (scoring algorithm identifier, e.g., `v0`, `tier`, `time-weighted`)
+- **Purpose:** Suggest which scoring algorithm the Subject prefers for this proof.
+- **Verifier behavior:**
+  - Verifiers MAY compute the requested score if the algorithm is supported.
+  - Verifiers MUST always return raw `sats_bonded` and `days_unspent` metrics.
+  - Unknown algorithms are ignored (verifier uses default or none).
+  - This is **advisory only** — RPs validate raw metrics independently.
+- **Examples:**
+  - `scoring: v0` — Use protocol reference formula
+  - `scoring: tier` — Return categorical tier (bronze/silver/gold/platinum)
+  - `scoring: time-weighted` — Emphasize days over sats
+  - `scoring: none` — Explicitly request no score computation
+- **Registry:** See `/registry/scoring.md` for registered algorithms.
+- **Security:** Subjects cannot game scores by choosing algorithms; RPs always validate raw metrics.
+
 ---
 
 ## Proposing a New Key
