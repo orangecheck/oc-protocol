@@ -42,12 +42,12 @@ issued_at: <ISO8601_UTC_Z>
 ack: I understand this links this address to my identity.
 ```
 
-**Rules**  
-- `npub:` — optional label (≤ 256 UTF‑8 bytes). Empty string allowed.  
-- `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: signet` is present **and** the verifier is in test mode.  
-- `nonce:` — 16 random bytes encoded as **32 lowercase hex**.  
-- `issued_at:` — RFC‑3339 / ISO‑8601 UTC with `Z`.  
-- `purpose:` and `ack:` — **exact literals** above; any deviation invalidates the message.  
+**Rules**
+- `npub:` — optional identity hint (≤ 256 UTF‑8 bytes). Can be a Nostr npub (63 chars), handle, email, URL, or any stable identifier. Empty string allowed.
+- `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: signet` is present **and** the verifier is in test mode.
+- `nonce:` — 16 random bytes encoded as **32 lowercase hex**.
+- `issued_at:` — RFC‑3339 / ISO‑8601 UTC with `Z`.
+- `purpose:` and `ack:` — **exact literals** above; any deviation invalidates the message.
 
 Issuers MUST prevent edits to wording/order after generation and MUST include exactly one trailing LF.
 
@@ -81,7 +81,7 @@ extlines  = *( extline )
 extline   = key ": " value LF
 key       = 1*( %x61-7A )                    ; a-z
 value     = *( VCHAR / WSP )                 ; UTF-8 allowed in practice
-npub      = *( UTF8 )                        ; ≤ 256 bytes recommended
+npub      = *( UTF8 )                        ; ≤ 256 UTF-8 bytes (MUST enforce)
 addr      = 1*( ALNUM / %x31-37 / %x70-7A )  ; bech32/taproot/legacy (syntax checked by impl)
 nonce     = 32HEXDIG-LOWER
 isotime   = 1*VCHAR                           ; implementations MUST parse RFC3339
