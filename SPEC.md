@@ -11,13 +11,15 @@ conformance: REQUIRED sections are marked **(normative)**
 
 This document defines the **normative** requirements for producing and verifying OrangeCheck proofs. Normative keywords **MUST / SHOULD / MAY** follow RFC‑2119.
 
-> **Scope.** v0 covers single-address proofs on Bitcoin **mainnet** (with `signet` allowed for testing via an extension). Multi-address aggregation, ZK privacy, and on-chain attestations are out of scope for v0.
+> **Scope.** v0 covers single-address proofs on Bitcoin **mainnet** (with `testnet` and `signet` allowed for testing via an extension). Multi-address aggregation, ZK privacy, and on-chain attestations are out of scope for v0.
 
 ---
 
 ## 1) Terminology **(normative)**
 
-- **Address** — Bitcoin mainnet singlesig: `P2WPKH (bc1q…)`, `P2TR (bc1p…)`, or `P2PKH (1…)` (compat only).  
+- **Address** — Bitcoin singlesig address:
+  - **Mainnet:** `P2WPKH (bc1q…)`, `P2TR (bc1p…)`, or `P2PKH (1…)` (compat only)
+  - **Testnet/Signet:** `P2WPKH (tb1q…)`, `P2TR (tb1p…)`, or `P2PKH (m…/n…)` (compat only)
 - **Proof** — tuple `(msg, addr, sig, scheme)`.  
 - **Message (`msg`)** — canonical UTF‑8 text per §2.  
 - **Scheme** — one of: `bip322` (preferred), `legacy` (P2PKH only).  
@@ -44,7 +46,7 @@ ack: I understand this links this address to my identity.
 
 **Rules**
 - `npub:` — optional identity hint (≤ 256 UTF‑8 bytes). Can be a Nostr npub (63 chars), handle, email, URL, or any stable identifier. Empty string allowed.
-- `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: signet` is present **and** the verifier is in test mode.
+- `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: testnet` or `network: signet` is present **and** the verifier is in test mode.
 - `nonce:` — 16 random bytes encoded as **32 lowercase hex**.
 - `issued_at:` — RFC‑3339 / ISO‑8601 UTC with `Z`.
 - `purpose:` and `ack:` — **exact literals** above; any deviation invalidates the message.
@@ -63,7 +65,7 @@ Optional **additional** lines follow, each `key: value` on its own line.
 - `aud:` — origin hint (e.g., `https://example.com`). RPs **MAY** require equality to their origin.  
 - `cap:` — advisory capability hints, e.g., `min_sats=100000,min_days=30`.  
 - `expires:` — RFC‑3339 UTC. Verifiers **SHOULD** warn or reject if in the past.  
-- `network:` — `mainnet` (default) or `signet` (testing).  
+- `network:` — `mainnet` (default), `testnet` (testing), or `signet` (testing).
 - `scope:` — human label for context (e.g., `twitter:@alice`, `web:alice.dev`).
 
 ### 2.3 ABNF **(normative)**
@@ -170,9 +172,11 @@ Given `(addr, msg, sig, scheme)`:
    f. `nonce` matches 32 hex lowercase.  
    g. `issued_at` parses as RFC‑3339 UTC.  
 
-2. **Network selection**  
-   - If `network: signet` present, use signet endpoints; otherwise mainnet.  
-   - If `network: signet` is present but verifier is not in test mode, return **network_testmode**.
+2. **Network selection**
+   - If `network: testnet` present, use testnet endpoints.
+   - If `network: signet` present, use signet endpoints.
+   - Otherwise use mainnet endpoints.
+   - If `network: testnet` or `network: signet` is present but verifier is not in test mode, return **network_testmode**.
 
 3. **Signature verification**  
    - If `scheme=bip322`, attempt BIP‑322 verification of `msg` for `addr`.  
@@ -310,7 +314,8 @@ Suggested set:
 - **tv4.json** — invalid (nonce uppercase).  
 - **tv5.json** — invalid (extensions unsorted).  
 - **tv6.json** — valid but expired; expect `expired`.  
-- **tv7.json** — signet with `network: signet`; expect `network_testmode` if verifier not in test mode.
+- **tv7.json** — testnet with `network: testnet`; expect `network_testmode` if verifier not in test mode.
+- **tv8.json** — signet with `network: signet`; expect `network_testmode` if verifier not in test mode.
 
 ---
 
