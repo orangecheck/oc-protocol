@@ -50,12 +50,12 @@ The claim is an **offline signature** over a canonical UTF‑8 text message.
 
 At verification time, the Verifier recomputes from public data:
 
-- **sats_bonded** — sum of **confirmed, unspent UTXOs** at the address, OR if `bonded:` extension is present, exactly that declared value (surplus ignored)
-- **days_unspent** — floor of days since the *earliest confirmation time* among active UTXOs, OR if `bonded:` extension is present, computed via oldest-first greedy selection (see SPEC.md §5)
+- **sats_bonded** — sum of **confirmed, unspent UTXOs** at the address, OR if `bond:` extension is present, exactly that declared value (surplus ignored)
+- **days_unspent** — floor of days since the *earliest confirmation time* among active UTXOs, OR if `bond:` extension is present, computed via oldest-first greedy selection (see SPEC.md §5)
 
 A suggested **score v0** is provided for UX comparability (see §8).
 
-When `bonded:` is used, the proof fails if confirmed balance < bonded. Spending old UTXOs may force newer UTXOs into the bonded set, resetting age.
+When `bond:` is used, the proof fails if confirmed balance < bond. Spending old UTXOs may force newer UTXOs into the bonded set, resetting age.
 
 ## 5) Lifecycle
 
@@ -122,7 +122,7 @@ Scores are **versioned** independently (e.g., `score_v0`, `score_tier`). Differe
 
 - **Protocol header:** `orangecheck v0` (strict match).
 - **Extensions (signed, advisory):** key/value lines appended after the core message; keys lexicographically sorted.
-- **Registry (initial):** `aud`, `bonded`, `expires`, `network`, `scope` (defined normatively in SPEC.md).
+- **Registry (initial):** `aud`, `bond`, `expires`, `network`, `scope` (defined normatively in SPEC.md).
 - Unknown extensions **MUST** be safely ignored by verifiers unless a local policy opts in.
 
 ## 10) Governance

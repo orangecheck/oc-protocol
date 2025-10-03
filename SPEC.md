@@ -63,9 +63,9 @@ Optional **additional** lines follow, each `key: value` on its own line.
 
 **Registered keys (v0)**
 - `aud:` — origin hint (e.g., `https://example.com`). RPs **MAY** require equality to their origin.
-- `bonded:` — integer (sats). If present, verifiers **MUST**:
-- 1) Fail verification if confirmed spendable balance at `address:` **< bonded** (status: `bond_insufficient`);
-- 2) Use **exactly** `bonded` for all displays and scoring (any surplus is ignored);
+- `bond:` — integer (sats). If present, verifiers **MUST**:
+- 1) Fail verification if confirmed spendable balance at `address:` **< bond** (status: `bond_insufficient`);
+- 2) Use **exactly** `bond` for all displays and scoring (any surplus is ignored);
 - 3) Derive `days_unspent` for the bonded stake via the **oldest-first greedy** rule (see §5.4).
 - `expires:` — RFC-3339 UTC. Verifiers **SHOULD** warn or reject if in the past.
 - `network:` — `mainnet` (default), `testnet`, or `signet`.
@@ -191,17 +191,17 @@ Given `(addr, msg, sig, scheme)`:
 
 4. **Bonded stake handling**
    - Fetch **confirmed, unspent UTXOs** for `addr`.
-   - If `bonded:` extension is present:
-     a. Parse `bonded` as integer (base-10 ASCII).
+   - If `bond:` extension is present:
+     a. Parse `bond` as integer (base-10 ASCII).
      b. Compute `confirmed_balance` = sum(UTXO values).
-     c. If `confirmed_balance < bonded`, return **bond_insufficient** (invalid).
-     d. Set `sats_bonded := bonded` (ignore surplus).
+     c. If `confirmed_balance < bond`, return **bond_insufficient** (invalid).
+     d. Set `sats_bonded := bond` (ignore surplus).
      e. Compute `days_unspent` via **oldest-first greedy** rule:
         + Sort UTXOs by `(block_height ASC, txid ASC, vout ASC)` (oldest first).
-        + Greedily select UTXOs until `sum ≥ bonded`; call this multiset `S_bond`. 
+        + Greedily select UTXOs until `sum ≥ bond`; call this multiset `S_bond`.
         + Let `first_seen := max(confirmation_time(u))` for `u ∈ S_bond` (the youngest in `S_bond`).
         + `days_unspent := floor( (now_utc - first_seen) / 86,400 )`.
-   - Else (no `bonded:` extension):
+   - Else (no `bond:` extension):
      a. `sats_bonded` = sum(UTXO values).
      b. `first_seen` = min(confirmation time) across all UTXOs.
      c. `days_unspent` = floor((now_utc − first_seen) / 86_400).
@@ -226,8 +226,8 @@ Given `(addr, msg, sig, scheme)`:
 
 Verifiers **MUST** compute and return:
 
-- **`sats_bonded`** (integer) — Sum of confirmed, unspent UTXO values at the address, OR if `bonded:` extension is present, exactly that value
-- **`days_unspent`** (integer) — Floor of days since earliest confirmation time among active UTXOs, OR if `bonded:` extension is present, computed via oldest-first greedy rule (see §5.4)
+- **`sats_bonded`** (integer) — Sum of confirmed, unspent UTXO values at the address, OR if `bond:` extension is present, exactly that value
+- **`days_unspent`** (integer) — Floor of days since earliest confirmation time among active UTXOs, OR if `bond:` extension is present, computed via oldest-first greedy rule (see §5.4)
 
 These raw metrics are the **source of truth** for all reputation assessment.
 
@@ -272,7 +272,7 @@ When displaying scores:
 - **MUST** show the algorithm identifier (e.g., "Score: 55.3 (v0)" or "Tier: Gold")
 - **SHOULD** provide explanation of what the score means
 - **MAY** show raw metrics alongside scores for transparency
-- **MUST** when `bonded` is present, display `Bonded: <sats_bonded> sats` and **SHOULD** indicate that any surplus balance is ignored.
+- **MUST** when `bond` is present, display `Bonded: <sats_bonded> sats` and **SHOULD** indicate that any surplus balance is ignored.
 
 ### 6.6 Security Considerations
 
@@ -295,7 +295,7 @@ When displaying scores:
 - `bond_confirmed` (X sats)
 - `bond_zero`
 - `bond_pending` (unconfirmed UTXOs ignored)
-- `bond_insufficient` (confirmed balance < bonded extension value)
+- `bond_insufficient` (confirmed balance < bond extension value)
 
 **Policy**  
 - `aud_mismatch`  
@@ -326,19 +326,19 @@ An implementation **conforms** to OCP v0 if:
 Provide vectors under `/conformance/vectors` with fields:  
 `addr`, `msg`, `sig`, `scheme`, `expect: { status[], sats_bonded, days_unspent, score_v0 }` (+ mocked UTXO set).
 
-Suggested set:  
-- **tv1.json** — valid `bip322` P2WPKH; no extensions.  
-- **tv2.json** — valid `bip322` P2TR; with `expires` future.  
-- **tv3.json** — valid `legacy` P2PKH.  
-- **tv4.json** — invalid (nonce uppercase).  
-- **tv5.json** — invalid (extensions unsorted).  
-- **tv6.json** — valid but expired; expect `expired`.  
+Suggested set:
+- **tv1.json** — valid `bip322` P2WPKH; no extensions.
+- **tv2.json** — valid `bip322` P2TR; with `expires` future.
+- **tv3.json** — valid `legacy` P2PKH.
+- **tv4.json** — invalid (nonce uppercase).
+- **tv5.json** — invalid (extensions unsorted).
+- **tv6.json** — valid but expired; expect `expired`.
 - **tv7.json** — testnet with `network: testnet`; expect `network_testmode` if verifier not in test mode.
 - **tv8.json** — signet with `network: signet`; expect `network_testmode` if verifier not in test mode.
--  + - **tv9.json**  — bonded present, balance == bonded → valid; age via greedy set’s youngest.
-+ - **tv10.json** — bonded present, balance > bonded → valid; surplus ignored; greedy age.
-+ - **tv11.json** — bonded present, balance < bonded → invalid; expect `bond_insufficient`.
-+ - **tv12.json** — churn scenario: spend an old UTXO, refill ≥ bonded; expect younger `days_unspent`.
+-  + - **tv9.json**  — bond present, balance == bond → valid; age via greedy set’s youngest.
++ - **tv10.json** — bond present, balance > bond → valid; surplus ignored; greedy age.
++ - **tv11.json** — bond present, balance < bond → invalid; expect `bond_insufficient`.
++ - **tv12.json** — churn scenario: spend an old UTXO, refill ≥ bond; expect younger `days_unspent`.
 
 ---
 

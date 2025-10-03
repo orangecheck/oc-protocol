@@ -59,10 +59,10 @@ A minimal verifier MUST:
 2. Verify **signature** for `(addr, msg)` (BIP‑322 first → legacy for `1…` only).
 3. Fetch **confirmed, unspent UTXOs** for `addr` (Esplora‑compatible endpoints).
 4. Compute:
-    - `sats_bonded` (sum of values, or `bonded:` extension value if present)
-    - `days_unspent` (from earliest confirmation, or oldest-first greedy if `bonded:` present)
+    - `sats_bonded` (sum of values, or `bond:` extension value if present)
+    - `days_unspent` (from earliest confirmation, or oldest-first greedy if `bond:` present)
     - `score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )`
-5. If `bonded:` present, fail if confirmed balance < bonded.
+5. If `bond:` present, fail if confirmed balance < bond.
 6. Optionally enforce **policy**: `aud` match, future `expires`.
 6. Display status + metrics, and include `sc=v0` wherever the score appears.
 
@@ -87,7 +87,7 @@ Say “OrangeCheck Protocol” when referring to the system; publish and target 
 
 Extensions are **signed, optional** lines inside the canonical message (`SPEC.md §2.2`). Keys are lowercase ASCII and **sorted lexicographically**.
 
-Registered keys (v0): `aud`, `bonded`, `expires`, `network`, `scope`.
+Registered keys (v0): `aud`, `bond`, `expires`, `network`, `scope`.
 
 - See **`/registry/extensions.md`** for semantics and security notes.
 - Propose new keys via PR including: motivation, verifier behavior, security considerations, and conformance tests.
