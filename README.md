@@ -59,10 +59,11 @@ A minimal verifier MUST:
 2. Verify **signature** for `(addr, msg)` (BIP‑322 first → legacy for `1…` only).
 3. Fetch **confirmed, unspent UTXOs** for `addr` (Esplora‑compatible endpoints).
 4. Compute:
-    - `sats_bonded` (sum of values)
-    - `days_unspent` (from earliest confirmation time)
+    - `sats_bonded` (sum of values, or `bonded:` extension value if present)
+    - `days_unspent` (from earliest confirmation, or oldest-first greedy if `bonded:` present)
     - `score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )`
-5. Optionally enforce **policy**: `aud` match, future `expires`, `cap` thresholds.
+5. If `bonded:` present, fail if confirmed balance < bonded.
+6. Optionally enforce **policy**: `aud` match, future `expires`.
 6. Display status + metrics, and include `sc=v0` wherever the score appears.
 
 ### Embed a badge
@@ -86,7 +87,7 @@ Say “OrangeCheck Protocol” when referring to the system; publish and target 
 
 Extensions are **signed, optional** lines inside the canonical message (`SPEC.md §2.2`). Keys are lowercase ASCII and **sorted lexicographically**.
 
-Registered keys (v0): `aud`, `cap`, `expires`, `network`, `scope`.
+Registered keys (v0): `aud`, `bonded`, `expires`, `network`, `scope`.
 
 - See **`/registry/extensions.md`** for semantics and security notes.
 - Propose new keys via PR including: motivation, verifier behavior, security considerations, and conformance tests.
@@ -134,15 +135,25 @@ OrangeCheck provides a **reference scoring algorithm** for interoperability (`sc
 
 ## FAQ
 
-**Do coins move?** No. Message signing only; funds remain in your wallet.
+**Do coins move?**:
 
-**Which wallets are supported?** Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.
+_No. Message signing only; funds remain in your wallet._
 
-**What exactly does a badge prove?** (1) Control of the address (signature). (2) At verification time there are **confirmed, unspent** sats there. From that we compute **sats_bonded**, **days_unspent**, and **score v0**.
+**Which wallets are supported?**
 
-**Can I hide the address?** Not in v0. Transparency enables universal recomputation. Use fresh addresses and rotate.
+Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.
 
-**Mainnet only?** Yes by default. Use `network: signet` **only** for testing (and verifiers must be in test mode).
+**What exactly does a badge prove?**
+
+(1) Control of the address (signature). (2) At verification time there are **confirmed, unspent** sats there. From that we compute `sats_bonded`, `days_unspent`, and `score v0`.
+
+**Can I hide the address?**
+
+Not in v0. Transparency enables universal recomputation. Use fresh addresses and rotate.
+
+**Mainnet only?**
+
+Yes by default. Use `network: signet` **only** for testing (and verifiers must be in test mode).
 
 ---
 

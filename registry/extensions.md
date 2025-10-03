@@ -14,12 +14,10 @@ All keys are **lowercase ASCII** and extensions appear **sorted lexicographicall
 - **Purpose:** Bind the proof to a site/app origin; RPs MAY require equality to their own origin.
 - **Verifier behavior:** If policy-enabled and mismatch → `aud_mismatch`.
 
-### `cap`
-- **Type:** string (CSV of key=value pairs). Suggested keys:
-  - `min_sats` — integer (satoshis)
-  - `min_days` — integer (days)
-- **Purpose:** Advisory thresholds suggested by the Issuer/Subject.
-- **Verifier behavior:** RP MAY enforce any subset.
+### `bonded`
+- **Type:** integer (satoshis)
+- **Purpose:** Declare exact stake amount; enforce minimum balance and cap scoring at this value.
+- **Verifier behavior:** If `confirmed_balance < bonded` → `bond_insufficient`. Use `bonded` for `sats_bonded` metric (ignore surplus). Compute age via oldest-first greedy UTXO selection (see SPEC.md §5.4).
 
 ### `expires`
 - **Type:** RFC-3339 UTC datetime (e.g., `2026-01-01T00:00:00Z`)

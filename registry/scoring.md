@@ -177,17 +177,17 @@ none:     below bronze threshold
 
 **Output:** `pass` or `fail`
 
-**Parameters:** Requires `cap:` extension with `min_sats` and/or `min_days`
+**Parameters:** RP-defined thresholds for `min_sats` and/or `min_days`
 
 **Example:**
 ```
-cap: min_sats=50000,min_days=60
+RP policy: min_sats=50000, min_days=60
 Result: pass if (sats >= 50000 AND days >= 60), else fail
 ```
 
 **Characteristics:**
 - Binary outcome
-- RP-defined thresholds
+- RP-defined thresholds (not in message)
 - Simple access control
 
 **Use Cases:**
