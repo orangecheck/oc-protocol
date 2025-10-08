@@ -341,5 +341,5 @@ To propose a new scoring algorithm, submit a PR adding a section to this file wi
 
 - [SPEC.md](../SPEC.md) - OrangeCheck Protocol Specification
 - [PROTOCOL.md](../PROTOCOL.md) - Protocol Overview
-- [extensions.md](./extensions.md) - Extension Key Registry
+- [extensions.md](extensions.md) - Extension Key Registry
 

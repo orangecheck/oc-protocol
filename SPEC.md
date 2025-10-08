@@ -1,30 +1,32 @@
 ---
 title: OrangeCheck Protocol — Specification
-status: Draft (Normative v0)
-version: v0
+status: Draft (Normative)
+version: 1.0
 license: CC-BY-4.0
 audience: engineers implementing issuers/verifiers/wallet integrations
 conformance: REQUIRED sections are marked **(normative)**
 ---
 
-# OrangeCheck Protocol — Specification (v0)
+# OrangeCheck Protocol — Specification
 
-This document defines the **normative** requirements for producing and verifying OrangeCheck proofs. Normative keywords **MUST / SHOULD / MAY** follow RFC‑2119.
+This document defines the **normative** requirements for producing, publishing, and verifying OrangeCheck attestations. Normative keywords **MUST / SHOULD / MAY** follow RFC‑2119.
 
-> **Scope.** v0 covers single-address proofs on Bitcoin **mainnet** (with `testnet` and `signet` allowed for testing via an extension). Multi-address aggregation, ZK privacy, and on-chain attestations are out of scope for v0.
+> **Scope.** OrangeCheck is a portable, multi-protocol Bitcoin reputation system. Attestations prove Bitcoin address control, bind to external identities (Nostr, DNS, Twitter, etc.), and are published to decentralized networks for universal discovery and verification.
 
 ---
 
 ## 1) Terminology **(normative)**
 
+- **Attestation** — A cryptographically signed proof of Bitcoin address control with bound identities
+- **Attestation ID** — Deterministic identifier: `SHA-256(canonical_message)` encoded as lowercase hex (64 chars)
 - **Address** — Bitcoin singlesig address:
-  - **Mainnet:** `P2WPKH (bc1q…)`, `P2TR (bc1p…)`, or `P2PKH (1…)` (compat only)
-  - **Testnet/Signet:** `P2WPKH (tb1q…)`, `P2TR (tb1p…)`, or `P2PKH (m…/n…)` (compat only)
-- **Proof** — tuple `(msg, addr, sig, scheme)`.  
-- **Message (`msg`)** — canonical UTF‑8 text per §2.  
-- **Scheme** — one of: `bip322` (preferred), `legacy` (P2PKH only).  
-- **UTXO** — confirmed, unspent transaction output at `addr` at verification time.  
-- **RP** — relying party (site/app interpreting the proof).
+  - **Mainnet:** `P2WPKH (bc1q…)`, `P2TR (bc1p…)`, or `P2PKH (1…)` (legacy compat)
+  - **Testnet/Signet:** `P2WPKH (tb1q…)`, `P2TR (tb1p…)`, or `P2PKH (m…/n…)` (legacy compat)
+- **Message** — canonical UTF‑8 text per §2
+- **Scheme** — one of: `bip322` (preferred), `legacy` (P2PKH only)
+- **UTXO** — confirmed, unspent transaction output at `addr` at verification time
+- **RP** — relying party (site/app interpreting the attestation)
+- **Identity Binding** — Cryptographic link between Bitcoin address and external identity (Nostr, DNS, Twitter, GitHub, etc.)
 
 ---
 
@@ -35,60 +37,96 @@ A **text** message with **LF** line endings and **exactly one trailing LF**. Fie
 ### 2.1 Core (7 lines)
 
 ```
-orangecheck v0
-npub: <IDENTITY_HINT_OR_EMPTY>
+orangecheck
+identities: <IDENTITY_BINDINGS>
 address: <BITCOIN_ADDRESS>
-purpose: public reputation bond (non-custodial)
+purpose: portable reputation attestation (non-custodial)
 nonce: <RANDOM_16B_HEX_LOWER>
 issued_at: <ISO8601_UTC_Z>
-ack: I understand this links this address to my identity.
+ack: I attest control of this address and bind it to my identities.
 ```
 
 **Rules**
-- `npub:` — optional identity hint (≤ 256 UTF‑8 bytes). Can be a Nostr npub (63 chars), handle, email, URL, or any stable identifier. Empty string allowed.
-- `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: testnet` or `network: signet` is present **and** the verifier is in test mode.
-- `nonce:` — 16 random bytes encoded as **32 lowercase hex**.
-- `issued_at:` — RFC‑3339 / ISO‑8601 UTC with `Z`.
-- `purpose:` and `ack:` — **exact literals** above; any deviation invalidates the message.
+- **Line 1:** `orangecheck` — MUST be exact literal (no version number)
+- **Line 2:** `identities:` — Multi-protocol identity bindings (see §2.1.1). Empty allowed.
+- **Line 3:** `address:` — MUST be **mainnet** singlesig (see §1). Non‑mainnet MUST be rejected unless `network: testnet` or `network: signet` extension is present.
+- **Line 4:** `purpose:` — MUST be exact literal above
+- **Line 5:** `nonce:` — 16 random bytes encoded as **32 lowercase hex**
+- **Line 6:** `issued_at:` — RFC‑3339 / ISO‑8601 UTC with `Z`
+- **Line 7:** `ack:` — MUST be exact literal above
 
 Issuers MUST prevent edits to wording/order after generation and MUST include exactly one trailing LF.
+
+### 2.1.1 Identity Bindings Format **(normative)**
+
+The `identities:` field contains comma-separated protocol-prefixed identifiers:
+
+**Format:** `protocol:identifier[,protocol:identifier...]`
+
+**Registered Protocols:**
+- `nostr:npub1...` — Nostr public key (bech32 npub format, 63 chars)
+- `dns:example.com` — DNS domain
+- `twitter:@username` — Twitter/X handle
+- `github:username` — GitHub username
+- `email:user@example.com` — Email address
+- `web:https://example.com` — Web origin
+- `did:method:identifier` — Decentralized Identifier (any DID method)
+
+**Rules:**
+- Identifiers MUST be sorted lexicographically by full string (`protocol:identifier`)
+- Empty identities field allowed: `identities: ` (single space, no bindings)
+- Maximum total length: 512 UTF-8 bytes
+- Unknown protocols MUST be preserved but MAY be ignored by verifiers
+- Duplicate protocols allowed (e.g., multiple GitHub accounts)
+
+**Examples:**
+```
+identities: nostr:npub1alice...,twitter:@alice
+identities: dns:alice.com,github:alice,nostr:npub1alice...
+identities:
+```
 
 ### 2.2 Extensions (signed) **(normative)**
 
 Optional **additional** lines follow, each `key: value` on its own line.
 
-- Keys: lowercase ASCII, **sorted lexicographically** (deterministic).  
-- Entire message (core + extensions) is signed.  
-- Verifiers **MUST** ignore unknown keys unless local policy requires them.
+- Keys: lowercase ASCII, **sorted lexicographically** (deterministic)
+- Entire message (core + extensions) is signed
+- Verifiers **MUST** ignore unknown keys unless local policy requires them
 
-**Registered keys (v0)**
-- `aud:` — origin hint (e.g., `https://example.com`). RPs **MAY** require equality to their origin.
+**Registered keys:**
+- `aud:` — origin hint (e.g., `https://example.com`). RPs **MAY** require equality to their origin
 - `bond:` — integer (sats). If present, verifiers **MUST**:
-- 1) Fail verification if confirmed spendable balance at `address:` **< bond** (status: `bond_insufficient`);
-- 2) Use **exactly** `bond` for all displays and scoring (any surplus is ignored);
-- 3) Derive `days_unspent` for the bonded stake via the **oldest-first greedy** rule (see §5.4).
-- `expires:` — RFC-3339 UTC. Verifiers **SHOULD** warn or reject if in the past.
-- `network:` — `mainnet` (default), `testnet`, or `signet`.
-- `scope:` — human label for context (e.g., `twitter:@alice`, `web:alice.dev`).
-- `scoring:` — string (algorithm id, e.g., `v0`, `tier`, `time-weighted`). **Advisory.** Verifiers **MAY** compute if supported; **MUST** still return raw metrics.
+  1. Fail verification if confirmed spendable balance at `address:` **< bond** (status: `bond_insufficient`)
+  2. Use **exactly** `bond` for all displays and scoring (any surplus is ignored)
+  3. Derive `days_unspent` for the bonded stake via the **oldest-first greedy** rule (see §5.4)
+- `expires:` — RFC-3339 UTC. Verifiers **SHOULD** warn or reject if in the past
+- `network:` — `mainnet` (default), `testnet`, or `signet`
+- `publish:` — comma-separated list of publishing targets (e.g., `nostr,ipfs`)
+- `relay_hints:` — comma-separated Nostr relay URLs (e.g., `wss://relay1.com,wss://relay2.com`)
+- `scope:` — human label for context (e.g., `twitter:@alice`, `web:alice.dev`)
+- `scoring:` — string (algorithm id, e.g., `reference`, `tier`, `time-weighted`). **Advisory.** Verifiers **MAY** compute if supported; **MUST** still return raw metrics
 
 ### 2.3 ABNF **(normative)**
 
 ```
-message         = core extlines LF                  ; each line ends with exactly one LF
-core            = "orangecheck v0" LF
-                  "npub: " npub LF
+message         = core extlines LF
+core            = "orangecheck" LF
+                  "identities: " identities LF
                   "address: " addr LF
-                  "purpose: public reputation bond (non-custodial)" LF
+                  "purpose: portable reputation attestation (non-custodial)" LF
                   "nonce: " nonce LF
                   "issued_at: " isotime LF
-                  "ack: I understand this links this address to my identity." LF
+                  "ack: I attest control of this address and bind it to my identities." LF
 extlines        = *( extline )
 extline         = key ": " value LF
 key             = 1*( %x61-7A )                     ; a-z
-value           = *( %x20-7E )                      ; printable ASCII (UTF-8 allowed in practice)
-npub            = *( %x20-7E )                      ; ≤ 256 UTF-8 bytes (enforce in prose)
-addr            = 1*( %x21-7E )                     ; syntax validated by implementation
+value           = *( %x20-7E )                      ; printable ASCII (UTF-8 allowed)
+identities      = [ identity-binding *( "," identity-binding ) ]
+identity-binding = protocol ":" identifier
+protocol        = 1*( %x61-7A / %x30-39 )          ; lowercase alphanumeric
+identifier      = 1*( %x21-7E )                     ; printable ASCII
+addr            = 1*( %x21-7E )
 nonce           = 32hexdig-lower
 isotime         = 1*( %x20-7E )                     ; MUST parse as RFC3339 UTC ("Z")
 hexdig-lower    = %x30-39 / %x61-66                 ; 0-9 or a-f
@@ -99,95 +137,167 @@ LF              = %x0A
 
 ---
 
-## 3) Signature Schemes **(normative)**
+## 3) Attestation ID **(normative)**
 
-- `scheme = "bip322"` — **MUST** be attempted first for all addresses.  
-- `scheme = "legacy"` — **MAY** be accepted *only* for `P2PKH (1…)` addresses.
+Every attestation has a deterministic, content-addressed identifier.
 
-If neither verifies `(msg, addr)`, the proof is **InvalidSignature**. If `scheme` is not recognized, return **InvalidScheme**.
+**Derivation:**
+```
+attestation_id = SHA-256(canonical_message)
+```
+
+**Encoding:** Lowercase hexadecimal (64 characters)
+
+**Properties:**
+- Deterministic: Same message → same ID
+- Collision-resistant: Different messages → different IDs
+- Content-addressed: ID proves message integrity
+- URL-safe: Can be used in paths and query parameters
 
 ---
 
-## 4) Wire Formats **(normative)**
+## 4) Signature Schemes **(normative)**
 
-### 4.1 Verify URL
+- `scheme = "bip322"` — **MUST** be attempted first for all addresses
+- `scheme = "legacy"` — **MAY** be accepted *only* for `P2PKH (1…)` addresses
 
-Verifiers **MUST** accept:
+If neither verifies `(msg, addr)`, the attestation is **InvalidSignature**. If `scheme` is not recognized, return **InvalidScheme**.
 
-```
-/verify?addr=<ADDR>&msg=<BASE64URL_UTF8_MSG>&sig=<SIG>&scheme=<SCHEME>&sc=v0
-```
+---
 
-- `msg` — base64url (padding optional) of the **entire** message (core + extensions).  
-- `sig` — scheme‑specific string (base64/hex).  
-- `scheme` — `bip322` or `legacy`.  
-- `sc` — score version string (here `v0`).
+## 5) Wire Formats **(normative)**
 
-**Optional URI form**
+### 5.1 Verify URL (by components)
 
 ```
-ocp://verify?addr=…&msg=…&sig=…&scheme=…&sc=v0
+/verify?addr=<ADDR>&msg=<BASE64URL_UTF8_MSG>&sig=<SIG>&scheme=<SCHEME>
 ```
 
-### 4.2 JSON Envelope (optional)
+- `msg` — base64url (padding optional) of the **entire** message (core + extensions)
+- `sig` — scheme‑specific string (base64/hex)
+- `scheme` — `bip322` or `legacy`
+
+### 5.2 Verify URL (by attestation ID)
+
+```
+/verify/<ATTESTATION_ID>
+/verify?id=<ATTESTATION_ID>
+```
+
+Verifiers **MUST** support lookup by attestation ID. Implementation:
+1. Query local cache/database
+2. Query Nostr relays (if `relay_hints` available)
+3. Query IPFS (if CID available)
+4. Return 404 if not found
+
+### 5.3 JSON Envelope **(normative)**
 
 ```json
 {
-  "ocp": "v0",
+  "attestation_id": "a3f5b8c2d1e4f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
   "scheme": "bip322",
-  "addr": "bc1q...",
-  "msg_b64url": "...",
-  "sig": "...",
-  "sc": "v0"
-}
-```
-
-**JSON Schema (machine‑readable)**
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "OrangeCheck v0 Envelope",
-  "type": "object",
-  "required": ["ocp","scheme","addr","msg_b64url","sig","sc"],
-  "properties": {
-    "ocp":    { "const": "v0" },
-    "scheme": { "enum": ["bip322","legacy"] },
-    "addr":   { "type": "string", "minLength": 10 },
-    "msg_b64url": { "type": "string", "minLength": 1 },
-    "sig":    { "type": "string", "minLength": 1 },
-    "sc":     { "const": "v0" }
-  },
-  "additionalProperties": false
+  "address": "bc1q...",
+  "identities": [
+    {"protocol": "nostr", "identifier": "npub1..."},
+    {"protocol": "twitter", "identifier": "@alice"}
+  ],
+  "message": "orangecheck\nidentities: nostr:npub1...,twitter:@alice\n...",
+  "message_b64url": "b3Jhbmdl...",
+  "signature": "AkcwRAIg...",
+  "issued_at": "2025-01-15T12:00:00Z",
+  "expires_at": "2026-01-15T12:00:00Z",
+  "verification_url": "https://ochk.io/verify/a3f5b8c2...",
+  "publish_targets": ["nostr", "ipfs"],
+  "relay_hints": ["wss://relay.damus.io", "wss://relay.primal.net"]
 }
 ```
 
 ---
 
-## 5) Verification Algorithm **(normative)**
+## 6) Publishing to Nostr **(normative)**
+
+Attestations **MAY** be published to Nostr relays for decentralized discovery.
+
+### 6.1 Nostr Event Format
+
+**Event Kind:** `30078` (Parameterized Replaceable Event per NIP-78)
+
+```json
+{
+  "kind": 30078,
+  "tags": [
+    ["d", "orangecheck:<attestation_id>"],
+    ["addr", "<bitcoin_address>"],
+    ["sats", "<sats_bonded>"],
+    ["days", "<days_unspent>"],
+    ["score", "<score>"],
+    ["v", "<verification_url>"],
+    ["i", "<protocol>:<identifier>", "<protocol>:<identifier>", "..."],
+    ["expires", "<unix_timestamp>"]
+  ],
+  "content": "<full_json_envelope>",
+  "created_at": <unix_timestamp>,
+  "pubkey": "<nostr_pubkey_if_bound>",
+  "sig": "<nostr_event_signature>"
+}
+```
+
+**Publishing Rules:**
+1. If `nostr:npub1...` identity is bound, event MUST be signed by that npub's private key
+2. If no Nostr identity bound, event MAY be signed by any key (ephemeral or service key)
+3. Event `content` contains full JSON envelope for complete verification
+4. Event is replaceable: newer attestations for same ID replace older ones
+
+### 6.2 Discovery Queries
+
+**By Attestation ID:**
+```json
+{"kinds": [30078], "#d": ["orangecheck:<attestation_id>"]}
+```
+
+**By Bitcoin Address:**
+```json
+{"kinds": [30078], "#addr": ["<bitcoin_address>"]}
+```
+
+**By Identity:**
+```json
+{"kinds": [30078], "#i": ["nostr:npub1..."]}
+```
+
+---
+
+## 7) Verification Algorithm **(normative)**
+
+### 7.1 Verification by Components
 
 Given `(addr, msg, sig, scheme)`:
 
-1. **Canonical checks**  
-   a. Decode `msg` (base64url → UTF‑8).  
-   b. Ensure **exactly one** trailing LF.  
-   c. Core lines present & in order; exact literals for header/purpose/ack.  
-   d. If extensions exist, **keys are lexicographically sorted**.  
-   e. `address` line value equals `addr`.  
-   f. `nonce` matches 32 hex lowercase.  
-   g. `issued_at` parses as RFC‑3339 UTC.  
+1. **Canonical checks**
+   a. Decode `msg` (base64url → UTF‑8)
+   b. Ensure **exactly one** trailing LF
+   c. Core lines present & in order; exact literals for header/purpose/ack
+   d. If extensions exist, **keys are lexicographically sorted**
+   e. `address` line value equals `addr`
+   f. `nonce` matches 32 hex lowercase
+   g. `issued_at` parses as RFC‑3339 UTC
+   h. `identities` field parses correctly (protocol:identifier format)
 
-2. **Network selection**
-   - If `network: testnet` present, use testnet. If `network: signet` present, use signet. Otherwise use mainnet.
-   + If a test network is indicated but the verifier is not in test mode, return **network_testmode**.
-   + The address prefix MUST match the selected network or verification fails (reject input or map to **sig_unsupported_script**).
+2. **Attestation ID derivation**
+   - Compute `attestation_id = SHA-256(msg)`
+   - Return in verification response
 
+3. **Network selection**
+   - If `network: testnet` present, use testnet
+   - If `network: signet` present, use signet
+   - Otherwise use mainnet
+   - Address prefix MUST match selected network
 
-3. **Signature verification**  
-   - If `scheme=bip322`, attempt BIP‑322 verification of `msg` for `addr`.  
-   - Else if `scheme=legacy` and `addr` is `P2PKH`, attempt classic `signmessage` verification.  
-   - Else: **InvalidScheme**.  
-   - On failure: **InvalidSignature**.
+4. **Signature verification**
+   - If `scheme=bip322`, attempt BIP‑322 verification
+   - Else if `scheme=legacy` and `addr` is `P2PKH`, attempt classic `signmessage`
+   - Else: **InvalidScheme**
+   - On failure: **InvalidSignature**
 
 4. **Bonded stake handling**
    - Fetch **confirmed, unspent UTXOs** for `addr`.
