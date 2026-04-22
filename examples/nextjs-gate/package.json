@@ -1,0 +1,20 @@
+{
+    "name": "oc-example-nextjs-gate",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Minimal Next.js App Router route handler gated with @orangecheck/gate.",
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start"
+    },
+    "dependencies": {
+        "@orangecheck/gate": "^0.1.2",
+        "next": "^15.0.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

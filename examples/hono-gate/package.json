@@ -1,0 +1,21 @@
+{
+    "name": "oc-example-hono-gate",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Minimal Hono server with an OrangeCheck-gated POST route (Workers / Bun / Deno / Node-compatible).",
+    "type": "module",
+    "scripts": {
+        "start": "node --import tsx server.ts"
+    },
+    "dependencies": {
+        "@hono/node-server": "^1.13.0",
+        "@orangecheck/gate": "^0.1.2",
+        "hono": "^4.6.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.19.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

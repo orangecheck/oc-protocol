@@ -1,0 +1,17 @@
+{
+    "name": "oc-example-express-gate",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Minimal Express server with an OrangeCheck-gated POST route.",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "@orangecheck/gate": "^0.1.2",
+        "express": "^4.21.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
