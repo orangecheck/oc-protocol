@@ -97,24 +97,17 @@ Anyone on Nostr, on a forum, posting into a community. They want to stop being m
 - Four-step wizard UX.
 - Email, web-origin, DID identity verification stubs (re-add when a real integrator asks).
 
-## Business model — three free pathways to a real business
+## Licensing + sustainability
 
-All three are **open-core**: the protocol and SDK are and always will be MIT + CC-BY. The business is built on hosted convenience and enterprise contracts, not gatekeeping the primitive.
+Open protocol, forever. The spec is [CC-BY-4.0](https://github.com/orangecheck/oc-protocol); every reference implementation is [MIT](https://github.com/orangecheck/oc-packages). Nothing about using OrangeCheck — the protocol, the SDKs, the hosted verifier at `ochk.io` — costs anything to a user or an integrator today.
 
-### Path 1 — Hosted verifier API (freemium)
-- **Free tier**: 1,000 verifications / day / IP, 24h result cache, public endpoints.
-- **Paid tier**: higher rate limits, SLA, webhook notifications when a tracked attestation's bond changes (spent UTXOs, added funds, expiry), custom scoring algorithms hosted behind a namespace (`sc=acme_v1`), private attestation relays, team management.
-- **Customers**: Nostr app operators, token-gated community builders, airdrop distributors.
+Sustainability isn't a priority yet. When it becomes one, the defaults we've already committed to are:
 
-### Path 2 — `@orangecheck/gate` middleware (open-source → consulting / support)
-- Drop-in for Express, Next.js, Fastify, Hono, Cloudflare Workers.
-- Open-source. Revenue comes from paid integration support and custom deployment for enterprises with on-prem / private-relay requirements.
+- **No fiat rails.** Any paid surface settles in BTC or Lightning. A Bitcoin-native sybil primitive with Stripe plumbing attached is a category error — it silently imports every assumption we're explicitly rejecting (KYC flows, chargebacks, IP-based fraud models, custody of payment state).
+- **Hosted ≠ gatekeeping.** Whatever ends up on the hosted verifier, the open-source packages stay at feature parity. Any integrator can self-host `@orangecheck/sdk` + `@orangecheck/gate` and hit their own Esplora + Nostr relays to replicate it.
+- **No tokens, no custody, no chain.** The product is cryptographic signatures over Bitcoin chain state. Anything that tries to extend it into a token or an L2 or a custodial rail has stopped being OrangeCheck.
 
-### Path 3 — Reputation-gated infra products (future)
-- A "sybil-filtered Nostr relay" — relays that only accept posts from addresses with OC proofs ≥ threshold. We can operate one as a reference implementation and license the tooling.
-- A "sybil-filtered airdrop" product — drop-in filter to spray an ERC-20 / token / sat allocation only to addresses that pass an OC threshold. Per-distribution fee.
-
-None of these require venture scale to break even. All of them are aligned with the protocol staying open.
+We'll figure out the shape when integrators actually need something paid. Until then the focus is adoption, not revenue.
 
 ## Success metrics
 
