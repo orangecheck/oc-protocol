@@ -18,16 +18,29 @@ This guide shows how to integrate OrangeCheck Protocol into your application.
 
 ## Installation
 
-### Using the OrangeCheck Codebase
+### `@orangecheck/sdk` (TypeScript / Node / browser)
 
-The OrangeCheck protocol implementation is located in `src/modules/ochk/lib/ocp/`.
+```bash
+npm install @orangecheck/sdk
+# or
+yarn add @orangecheck/sdk
+```
 
-**Core Modules:**
-- `canonical.ts` — Canonical message generation
-- `verify.ts` — Signature verification and metrics computation
-- `attestation.ts` — High-level attestation API
-- `nostr.ts` — Nostr relay publishing and discovery
-- `nostr-crypto.ts` — Nostr event signing (NIP-07)
+The SDK re-exports every building block used in this guide. Three entry points cover almost all use cases:
+
+- `check()` — sybil-gate primitive. Decide in one call whether an address clears `minSats` × `minDays` thresholds.
+- `verify()` — verify a raw `(addr, msg, sig)` tuple without a Nostr round-trip.
+- `createAttestation()` — build a signed JSON envelope from a canonical message + signature.
+
+Finer-grained building blocks (`buildCanonicalMessage`, `publishAttestation`, `discoverAttestations`, `queryByIdentity`, `isNip07Available`, `getNostrPublicKey`, …) are also exported — use them when the three above don't compose the way you need.
+
+### Other stacks
+
+- **Python** — `pip install orangecheck`
+- **HTTP API** — every function has a zero-dependency equivalent at `https://ochk.io/api/*` (see the [API reference](https://ochk.io/docs/api))
+- **Middleware** — `@orangecheck/gate` wraps Express, Fastify, Hono, Next, and Workers
+
+Everything below uses the TypeScript SDK; translating to Python or direct HTTP is a near-mechanical substitution.
 
 ---
 
@@ -36,7 +49,7 @@ The OrangeCheck protocol implementation is located in `src/modules/ochk/lib/ocp/
 ### Step 1: Build Canonical Message
 
 ```typescript
-import { buildCanonicalMessage } from '@/modules/ochk/lib/ocp/canonical';
+import { buildCanonicalMessage } from '@orangecheck/sdk';
 
 const message = buildCanonicalMessage(
   {
@@ -49,7 +62,7 @@ const message = buildCanonicalMessage(
   {
     aud: 'https://example.com',
     bond: '1000000',
-    expires: '2026-01-01T00:00:00Z',
+    expires: '2027-04-22T00:00:00Z',
   }
 );
 ```
@@ -78,7 +91,7 @@ const signature = await wallet.signMessage(message, 'bip322');
 ### Step 3: Create Attestation Envelope
 
 ```typescript
-import { createAttestation } from '@/modules/ochk/lib/ocp/attestation';
+import { createAttestation } from '@orangecheck/sdk';
 
 const envelope = await createAttestation({
   message,
@@ -120,8 +133,7 @@ console.log('Verification URL:', envelope.verification_url);
 ### Publish Attestation
 
 ```typescript
-import { publishAttestation } from '@/modules/ochk/lib/ocp/attestation';
-import { getNostrPublicKey } from '@/modules/ochk/lib/ocp/nostr-crypto';
+import { getNostrPublicKey, publishAttestation } from '@orangecheck/sdk';
 
 // Get user's Nostr pubkey from NIP-07 extension
 const pubkey = await getNostrPublicKey();
@@ -155,7 +167,7 @@ console.log('Failed:', result.failed);
 ### Check NIP-07 Availability
 
 ```typescript
-import { isNip07Available, getNip07Info } from '@/modules/ochk/lib/ocp/nostr-crypto';
+import { isNip07Available, getNip07Info } from '@orangecheck/sdk';
 
 if (isNip07Available()) {
   const info = getNip07Info();
@@ -172,7 +184,7 @@ if (isNip07Available()) {
 ### By Attestation ID
 
 ```typescript
-import { discoverAttestations } from '@/modules/ochk/lib/ocp/attestation';
+import { discoverAttestations } from '@orangecheck/sdk';
 
 const attestations = await discoverAttestations({
   attestationId: 'a3f5b8c2d1e4f6a7b9c0d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3',
@@ -200,14 +212,13 @@ const attestations = await discoverAttestations({
 });
 ```
 
-**Supported Identity Protocols:**
+**Supported Identity Protocols (v0):**
 - `nostr` — Nostr public key (npub)
 - `github` — GitHub username
 - `twitter` — Twitter/X handle
 - `dns` — DNS domain
-- `email` — Email address
-- `web` — Web origin
-- `did` — Decentralized Identifier
+
+> `email:`, `web:`, and `did:` were in earlier drafts and are retired for v0 — see [registry/extensions.md](registry/extensions.md). Unknown protocols are preserved in the signed payload but SHOULD NOT be treated as verified bindings.
 
 ---
 
@@ -216,7 +227,7 @@ const attestations = await discoverAttestations({
 ### Verify Signature and Compute Metrics
 
 ```typescript
-import { verify } from '@/modules/ochk/lib/ocp/verify';
+import { verify } from '@orangecheck/sdk';
 
 const result = await verify({
   addr: attestation.address,
@@ -270,7 +281,7 @@ Identity bindings are **self-asserted** and must be verified independently.
 // User must publish a Nostr event containing the attestation ID
 // Query Nostr for events from the claimed npub
 
-import { queryByIdentity } from '@/modules/ochk/lib/ocp/nostr';
+import { queryByIdentity } from '@orangecheck/sdk';
 
 const events = await queryByIdentity('nostr', 'npub1alice...');
 
@@ -383,7 +394,7 @@ import {
   publishAttestation,
   discoverAttestations,
   verify,
-} from '@/modules/ochk/lib/ocp';
+} from '@orangecheck/sdk';
 
 // 1. Create canonical message
 const message = buildCanonicalMessage(
@@ -486,5 +497,5 @@ console.log('Reputation:', verification.metrics);
 
 ---
 
-**Questions?** Open an issue or PR in the repository.
+**Questions?** Open an issue or PR at [github.com/orangecheck/oc-protocol](https://github.com/orangecheck/oc-protocol).
 

@@ -3,7 +3,7 @@
 **Proof of Bitcoin stake for the open web.**
 *Sats as signal. No KYC, no custody.*
 
-[![Status](https://img.shields.io/badge/status-draft-informational)](#) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
+[![Status](https://img.shields.io/badge/status-v0%20shipped-success)](https://ochk.io) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
 
 ---
 
@@ -96,7 +96,7 @@ Optional signed extensions (sorted lexicographically): `aud`, `bond`, `expires`,
 | You control address `bc1q…` | Cryptographic | BIP-322 signature verification |
 | The address holds `N` sats | On-chain, trustless | Query Esplora / mempool.space for UTXOs |
 | The oldest bonded UTXO is `N` days old | On-chain, trustless | Compare confirmation time to now |
-| You claim to be `@alice` on GitHub | **Self-asserted** | Verifier must check the GitHub gist / DNS TXT / tweet independently |
+| You claim to be `@alice` on GitHub | **Self-asserted** | Verifier must check a public gist or repo file under @alice independently |
 
 The first three are mathematical. The fourth is a claim that platforms verify out-of-band the same way they verify any social handle — e.g., DNS TXT record, GitHub gist, signed Nostr event.
 
@@ -120,7 +120,7 @@ Two things, nothing more:
 For UX, the protocol defines one reference score:
 
 ```
-score_v0 = round( ln(1 + sats_bonded) × (1 + days_unspent / 30), 2 )
+score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
 ```
 
 There is no second algorithm. RPs with specialized needs write their own against raw metrics; the protocol does not try to preempt every use case.

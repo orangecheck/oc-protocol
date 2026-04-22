@@ -53,7 +53,7 @@ The claim is an **offline signature** over a canonical UTF-8 text message.
 At verification time, the Verifier recomputes from public data:
 
 - **`sats_bonded`** — sum of confirmed, unspent UTXOs at the address, OR if the `bond:` extension is present, exactly that declared value (surplus is ignored).
-- **`days_unspent`** — floor of days since the earliest confirmation time among active UTXOs, OR if `bond:` is present, computed via oldest-first greedy selection (see SPEC.md §5).
+- **`days_unspent`** — floor of days since the earliest confirmation time among active UTXOs, OR if `bond:` is present, computed via oldest-first greedy selection (see SPEC.md §7.5).
 
 Together these define the **stake**. A reference `score_v0` is provided for UX comparability (see §8). RPs are free to compare raw metrics against their own thresholds.
 

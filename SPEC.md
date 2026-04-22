@@ -63,14 +63,13 @@ The `identities:` field contains comma-separated protocol-prefixed identifiers:
 
 **Format:** `protocol:identifier[,protocol:identifier...]`
 
-**Registered Protocols:**
+**Registered Protocols (v0):**
 - `nostr:npub1...` — Nostr public key (bech32 npub format, 63 chars)
 - `dns:example.com` — DNS domain
 - `twitter:@username` — Twitter/X handle
 - `github:username` — GitHub username
-- `email:user@example.com` — Email address
-- `web:https://example.com` — Web origin
-- `did:method:identifier` — Decentralized Identifier (any DID method)
+
+Earlier drafts registered `email:`, `web:`, and `did:`; those are **retired for v0**. They may return in a future version once reliable, decentralized proof-of-control mechanisms are specified. Implementations encountering unknown protocols MUST follow the "unknown protocols preserved but MAY be ignored" rule below.
 
 **Rules:**
 - Identifiers MUST be sorted lexicographically by full string (`protocol:identifier`)
@@ -204,8 +203,8 @@ Verifiers **MUST** support lookup by attestation ID. Implementation:
   "message": "orangecheck\nidentities: nostr:npub1...,twitter:@alice\n...",
   "message_b64url": "b3Jhbmdl...",
   "signature": "AkcwRAIg...",
-  "issued_at": "2025-01-15T12:00:00Z",
-  "expires_at": "2026-01-15T12:00:00Z",
+  "issued_at": "2026-04-22T12:00:00Z",
+  "expires_at": "2027-04-22T12:00:00Z",
   "verification_url": "https://ochk.io/verify/a3f5b8c2...",
   "publish_targets": ["nostr", "ipfs"],
   "relay_hints": ["wss://relay.damus.io", "wss://relay.primal.net"]
@@ -226,7 +225,7 @@ Attestations **MAY** be published to Nostr relays for decentralized discovery.
 {
   "kind": 30078,
   "tags": [
-    ["d", "orangecheck:<attestation_id>"],
+    ["d", "<attestation_id>"],
     ["addr", "<bitcoin_address>"],
     ["sats", "<sats_bonded>"],
     ["days", "<days_unspent>"],
@@ -252,7 +251,7 @@ Attestations **MAY** be published to Nostr relays for decentralized discovery.
 
 **By Attestation ID:**
 ```json
-{"kinds": [30078], "#d": ["orangecheck:<attestation_id>"]}
+{"kinds": [30078], "#d": ["<attestation_id>"]}
 ```
 
 **By Bitcoin Address:**
@@ -299,7 +298,7 @@ Given `(addr, msg, sig, scheme)`:
    - Else: **InvalidScheme**
    - On failure: **InvalidSignature**
 
-4. **Bonded stake handling**
+5. **Bonded stake handling**
    - Fetch **confirmed, unspent UTXOs** for `addr`.
    - If `bond:` extension is present:
      a. Parse `bond` as integer (base-10 ASCII).
@@ -316,14 +315,14 @@ Given `(addr, msg, sig, scheme)`:
      b. `first_seen` = min(confirmation time) across all UTXOs.
      c. `days_unspent` = floor((now_utc − first_seen) / 86_400).
 
-5. **Compute score**
-   - `score_v0` per §8 using `sats_bonded` and `days_unspent` from step 4.
+6. **Compute score**
+   - `score_v0` per §8 using `sats_bonded` and `days_unspent` from step 5.
 
-6. **Policy (optional)**
+7. **Policy (optional)**
    - If `aud:` present, RP **MAY** require equality to its own origin.
    - If `expires:` present and `< now`, **SHOULD** warn or reject.
 
-7. **Result**
+8. **Result**
    - Return status + metrics (see §9).
 
 **Determinism.** Verifiers SHOULD round metrics to appropriate precision for display.
@@ -332,16 +331,18 @@ Given `(addr, msg, sig, scheme)`:
 
 ## 8) Metrics & Scoring **(normative)**
 
-### 6.1 Required Metrics
+### 8.1 Required Metrics
 
 Verifiers **MUST** compute and return:
 
 - **`sats_bonded`** (integer) — Sum of confirmed, unspent UTXO values at the address, OR if `bond:` extension is present, exactly that value
-- **`days_unspent`** (integer) — Floor of days since earliest confirmation time among active UTXOs, OR if `bond:` extension is present, computed via oldest-first greedy rule (see §5.4)
+- **`days_unspent`** (integer) — Floor of days since earliest confirmation time among active UTXOs, OR if `bond:` extension is present, computed via oldest-first greedy rule (see §7.5)
+
+Verifiers **MAY** additionally return a `score` computed per §8.3. If returned it MUST be tagged with its algorithm identifier.
 
 These raw metrics are the **source of truth** for all reputation assessment.
 
-### 6.2 Optional Scoring
+### 8.2 Optional Scoring
 
 Verifiers **MAY** compute additional scores to aid UX and comparison. If scores are provided:
 
@@ -349,12 +350,12 @@ Verifiers **MAY** compute additional scores to aid UX and comparison. If scores 
 - Scores **MUST NOT** be assumed comparable across different algorithms
 - Scores **SHOULD** be documented with their formula or logic
 
-### 6.3 Reference Score (score_v0)
+### 8.3 Reference Score (score_v0)
 
 The protocol defines a reference scoring algorithm for interoperability, where `ln` is the natural logarithm:
 
 ```
-score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 ) 
+score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
 ```
 
 **Output:** Decimal number (typically 10-250)
@@ -367,16 +368,16 @@ score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
 
 Verifiers implementing `score_v0` **MUST** use this exact formula.
 
-### 6.4 Alternative Scoring Algorithms
+### 8.4 Alternative Scoring Algorithms
 
 RPs are encouraged to compute scores tailored to their use case. See `/registry/scoring.md` for:
 - Registered algorithms (`tier`, `time-weighted`, `amount-weighted`, etc.)
 - Formula specifications
 - Use case guidance
 
-The `scoring:` extension (§2.2) allows Subjects to suggest a preferred algorithm, but RPs **MUST** validate raw metrics independently. (See §8 for the canonical `score_v0` formula.)
+The `scoring:` extension (§2.2) allows Subjects to suggest a preferred algorithm, but RPs **MUST** validate raw metrics independently. (See §8.3 for the canonical `score_v0` formula.)
 
-### 6.5 Display Requirements
+### 8.5 Display Requirements
 
 When displaying scores:
 - **MUST** show the algorithm identifier (e.g., "Score: 55.3 (v0)" or "Tier: Gold")
@@ -384,7 +385,7 @@ When displaying scores:
 - **MAY** show raw metrics alongside scores for transparency
 - **MUST** when `bond` is present, display `Bonded: <sats_bonded> sats` and **SHOULD** indicate that any surplus balance is ignored.
 
-### 6.6 Security Considerations
+### 8.6 Security Considerations
 
 - RPs **MUST NOT** trust scores without validating `sats_bonded` and `days_unspent`
 - Scores are **advisory** interpretations, not cryptographic proofs
@@ -445,10 +446,10 @@ Suggested set:
 - **tv6.json** — valid but expired; expect `expired`.
 - **tv7.json** — testnet with `network: testnet`; expect `network_testmode` if verifier not in test mode.
 - **tv8.json** — signet with `network: signet`; expect `network_testmode` if verifier not in test mode.
--  + - **tv9.json**  — bond present, balance == bond → valid; age via greedy set’s youngest.
-+ - **tv10.json** — bond present, balance > bond → valid; surplus ignored; greedy age.
-+ - **tv11.json** — bond present, balance < bond → invalid; expect `bond_insufficient`.
-+ - **tv12.json** — churn scenario: spend an old UTXO, refill ≥ bond; expect younger `days_unspent`.
+- **tv9.json**  — bond present, balance == bond → valid; age via greedy set's youngest.
+- **tv10.json** — bond present, balance > bond → valid; surplus ignored; greedy age.
+- **tv11.json** — bond present, balance < bond → invalid; expect `bond_insufficient`.
+- **tv12.json** — churn scenario: spend an old UTXO, refill ≥ bond; expect younger `days_unspent`.
 
 ---
 
@@ -462,14 +463,64 @@ Suggested set:
 
 ## 13) Versioning & Registry **(normative)**
 
-- Protocol header string `orangecheck v0` and the seven core lines are **frozen** for v0.  
+- Protocol header string `orangecheck` and the seven core lines are **frozen** for v0.  
 - Any change to header, core wording/order, canonicalization, or signature schemes **REQUIRES** a version bump.  
 - The **extension key registry** lives at `registry/extensions.md`. Proposals MUST include: motivation, security notes, expected verifier behavior, and conformance tests.
 
 ---
 
-## 14) References **(informative)**
+## 14) Appendix A — Signed-Challenge Auth **(informative)**
 
-- BIP‑322: Generic Message Signing for Bitcoin  
-- RFC‑2119: Key words for use in RFCs to Indicate Requirement Levels  
+OrangeCheck defines a sibling wire format for one-shot auth flows ("prove you control this address right now") that deliberately cannot be confused with a reputation attestation. An RP issues a short-lived challenge, the holder signs it BIP-322, and the RP binds the proven address to a session. Live reference implementation at [`ochk.io/signin`](https://ochk.io/signin) + [`/api/auth/*`](https://ochk.io/docs/api/auth).
+
+### A.1 Challenge Message
+
+```
+orangecheck-auth
+address: <addr>
+nonce: <32-lowercase-hex>
+issued_at: <RFC-3339 UTC>
+expires_at: <RFC-3339 UTC>
+ack: I authorize this session under the OrangeCheck auth challenge.
+[<ext_key>: <ext_value> ...]
+```
+
+**Normative rules:**
+
+1. Header literal MUST be `orangecheck-auth` (not `orangecheck`) so signatures cannot cross-verify against attestations.
+2. The `ack:` literal MUST equal the string above — any other ack MUST cause verification to fail.
+3. Core lines MUST appear in the order shown.
+4. Extension keys MUST be lowercase ASCII and MUST be sorted lexicographically.
+5. `expires_at − issued_at` SHOULD be ≤ 10 minutes; implementations MUST reject expired challenges.
+
+### A.2 Registered Extensions
+
+- `audience:` — expected RP origin (e.g., `https://example.com`). Verifier MUST require equality if the application passes `expectedAudience`.
+- `purpose:` — human-readable label for the flow (e.g., `login`, `ochk-signin`). Verifier MUST require equality if the application passes `expectedPurpose`.
+
+### A.3 Verification
+
+Signature verification follows SPEC §4 (`bip322` or `legacy`) against the full challenge text including the trailing `\n`.
+
+Verifiers MUST fail with a specific reason. Recommended codes:
+
+- `malformed` — header literal, ack, or core-line count wrong.
+- `expired` — `now > expires_at`.
+- `not_yet_valid` — `now < issued_at` (clock skew).
+- `sig_invalid` — signature does not verify against `address`.
+- `sig_unsupported_scheme` — e.g., `legacy` requested for a non-P2PKH address.
+- `nonce_mismatch` — caller-supplied `expectedNonce` disagrees with the message's nonce.
+- `audience_mismatch` / `purpose_mismatch` — caller-supplied expected value disagrees.
+
+### A.4 Why a Separate Wire Format
+
+Attestations (SPEC §2) and auth challenges (this appendix) have opposite lifetimes and risk profiles. An attestation is content-addressed and meant to be long-lived and discoverable; an auth challenge is nonce-addressed and must not be replayable. Using the *same* header literal for both would let an attacker replay an old attestation signature as a login, or vice versa. The `orangecheck-auth` vs `orangecheck` split closes that door at the grammar level — no shared parser path, no ambiguity.
+
+---
+
+## 15) References **(informative)**
+
+- BIP‑322: Generic Message Signing for Bitcoin
+- RFC‑2119: Key words for use in RFCs to Indicate Requirement Levels
 - RFC‑3339 / ISO‑8601: Date and Time on the Internet
+- NIP-78: Arbitrary Custom App Data (Nostr kind 30078)

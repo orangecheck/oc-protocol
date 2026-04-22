@@ -76,6 +76,6 @@ Proposals that are really "a policy I want to use on my own app" should stay in 
 
 ## References
 
-- [SPEC.md §6](../SPEC.md) — normative scoring rules
+- [SPEC.md §8](../SPEC.md) — normative scoring rules
 - [PROTOCOL.md §8](../PROTOCOL.md) — scoring design rationale
 - [VISION.md](../VISION.md) — why the registry is intentionally small

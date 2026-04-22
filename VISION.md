@@ -139,11 +139,10 @@ None of these require venture scale to break even. All of them are aligned with 
 - Not going to claim this solves AI-agent trust. It doesn't.
 - Not going to run custody of anything, ever.
 
-## Next move
+## Current status
 
-1. Land the new narrative everywhere (README, landing, /protocol, /docs).
-2. Collapse the 4-step create UX into one page.
-3. Ship `/api/check`. The API is the product.
-4. Ship a drop-in embed widget.
-5. Publish the SDK 2.0 with the 3-function surface.
-6. Get the first external integrator — one Nostr client or one forum — to use `/api/check` in production. That's the only validation that matters.
+- **Protocol v0** — frozen. Canonical message, BIP-322 signing, content-addressed attestation IDs, the `score_v0` reference algorithm, and the four-protocol identity set (Nostr, GitHub, DNS, Twitter) are all shipped and unchanged.
+- **Public API** — `GET /api/check`, `POST /api/verify`, `GET /api/challenge`, `GET /api/discover`, `GET /api/stats`, `GET /api/og/check` all live at `ochk.io`, CORS-enabled, no API key.
+- **Auth layer** — `/signin` + `/dashboard` at ochk.io exchange a BIP-322 signature for an httpOnly session cookie (`/api/auth/*`). See the live docs for the reference implementation.
+- **Packages shipped** — `@orangecheck/sdk`, `@orangecheck/gate`, `@orangecheck/react`, `@orangecheck/wallet-adapter`, `@orangecheck/cli`, `@orangecheck/relay-filter`, `@orangecheck/airdrop-gate` on npm; `orangecheck` on PyPI.
+- **Next** — integrator wins. The only validation that matters is the first external Nostr client, forum, or airdrop operator running `/api/check` in production.

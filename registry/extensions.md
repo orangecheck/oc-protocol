@@ -13,14 +13,13 @@ The `identities:` core field (not an extension) supports multi-protocol identity
 
 **Format:** `protocol:identifier[,protocol:identifier...]`
 
-**Registered Protocols:**
+**Registered Protocols (v0):**
 - `nostr:npub1...` — Nostr public key (bech32 npub format, 63 chars)
 - `dns:example.com` — DNS domain
 - `twitter:@username` — Twitter/X handle
 - `github:username` — GitHub username
-- `email:user@example.com` — Email address
-- `web:https://example.com` — Web origin
-- `did:method:identifier` — Decentralized Identifier (any DID method)
+
+Earlier drafts also registered `email:`, `web:`, and `did:`; those are **retired for v0** (see SPEC.md §2.1.1). Unknown protocols are preserved in the signed message but MAY be ignored by verifiers.
 
 **Rules:**
 - Identifiers MUST be sorted lexicographically
@@ -31,8 +30,8 @@ The `identities:` core field (not an extension) supports multi-protocol identity
 **Examples:**
 ```
 identities: github:alice,nostr:npub1alice...,twitter:@alice
-identities: dns:alice.com,web:https://alice.com
-identities: 
+identities: dns:alice.com,github:alice
+identities:
 ```
 
 ---
@@ -137,15 +136,12 @@ While identity bindings are self-asserted in the attestation, RPs can verify the
 - **Method 2:** Repo file (e.g., `.orangecheck/attestation.json`)
 - **Method 3:** Profile README with verification link
 
-### `email:user@example.com`
-- **Method 1:** Signed email with attestation (PGP/S/MIME)
-- **Method 2:** Domain verification (if email domain matches `dns:` binding)
-- **Method 3:** OAuth flow with email confirmation
-
-### `web:https://example.com`
-- **Method 1:** `.well-known/orangecheck.json` at origin
-- **Method 2:** Meta tag in HTML: `<meta name="orangecheck" content="<attestation_id>">`
-- **Method 3:** HTTP header: `X-OrangeCheck: <attestation_id>`
+> **Retired for v0:** `email:`, `web:`, `did:`. The earlier drafts of this
+> registry specified verification methods for these protocols, but none had
+> a decentralized, non-custodial proof-of-control mechanism that matched the
+> rest of v0's design. They may return in a later version — in the meantime,
+> verifiers encountering them MUST preserve them in the signed payload but
+> SHOULD NOT treat them as verified bindings.
 
 ---
 
@@ -246,6 +242,6 @@ These extensions are being discussed but not yet standardized:
 
 ---
 
-**Last Updated:** 2025-01-15  
-**Version:** 1.0.0
+**Last Updated:** 2026-04-22  
+**Version:** 1.1.0
 
