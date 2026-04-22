@@ -11,7 +11,7 @@ conformance: REQUIRED sections are marked **(normative)**
 
 This document defines the **normative** requirements for producing, publishing, and verifying OrangeCheck attestations. Normative keywords **MUST / SHOULD / MAY** follow RFC‑2119.
 
-> **Scope.** OrangeCheck is a portable, multi-protocol Bitcoin reputation system. Attestations prove Bitcoin address control, bind to external identities (Nostr, DNS, Twitter, etc.), and are published to decentralized networks for universal discovery and verification.
+> **Scope.** OrangeCheck is a portable, multi-protocol Bitcoin **sybil-resistance primitive** — not a reputation system. Attestations prove Bitcoin address control, bind to external identities (Nostr, DNS, Twitter, etc.), and are published to decentralized networks for universal discovery and verification.
 
 ---
 
@@ -317,20 +317,20 @@ Given `(addr, msg, sig, scheme)`:
      c. `days_unspent` = floor((now_utc − first_seen) / 86_400).
 
 5. **Compute score**
-   - `score_v0` per §6 using `sats_bonded` and `days_unspent` from step 4.
+   - `score_v0` per §8 using `sats_bonded` and `days_unspent` from step 4.
 
 6. **Policy (optional)**
    - If `aud:` present, RP **MAY** require equality to its own origin.
    - If `expires:` present and `< now`, **SHOULD** warn or reject.
 
 7. **Result**
-   - Return status + metrics (see §7).
+   - Return status + metrics (see §9).
 
 **Determinism.** Verifiers SHOULD round metrics to appropriate precision for display.
 
 ---
 
-## 6) Metrics & Scoring **(normative)**
+## 8) Metrics & Scoring **(normative)**
 
 ### 6.1 Required Metrics
 
@@ -374,7 +374,7 @@ RPs are encouraged to compute scores tailored to their use case. See `/registry/
 - Formula specifications
 - Use case guidance
 
-The `scoring:` extension (§2.2) allows Subjects to suggest a preferred algorithm, but RPs **MUST** validate raw metrics independently.
+The `scoring:` extension (§2.2) allows Subjects to suggest a preferred algorithm, but RPs **MUST** validate raw metrics independently. (See §8 for the canonical `score_v0` formula.)
 
 ### 6.5 Display Requirements
 
@@ -393,7 +393,7 @@ When displaying scores:
 
 ---
 
-## 7) Status & Error Codes **(normative)**
+## 9) Status & Error Codes **(normative)**
 
 **Signature**  
 - `sig_ok_bip322`  
@@ -421,17 +421,17 @@ Verifiers **SHOULD** map codes to human‑readable strings in UI and MAY expose 
 
 ---
 
-## 8) Conformance **(normative)**
+## 10) Conformance **(normative)**
 
 An implementation **conforms** to OCP v0 if:  
 - **Issuer** produces canonical messages per §2.  
-- **Verifier** validates & computes per §5 and emits codes from §7.  
+- **Verifier** validates & computes per §5 and emits codes from §9.  
 - Unknown extensions are ignored safely, unless RP policy opts in.  
 - `scheme` handling matches §3.
 
 ---
 
-## 9) Test Vectors **(normative list; fixtures in repo)**
+## 11) Test Vectors **(normative list; fixtures in repo)**
 
 Provide vectors under `/conformance/vectors` with fields:  
 `addr`, `msg`, `sig`, `scheme`, `expect: { status[], sats_bonded, days_unspent, score_v0 }` (+ mocked UTXO set).
@@ -452,7 +452,7 @@ Suggested set:
 
 ---
 
-## 10) Security & Privacy Notes **(informative)**
+## 12) Security & Privacy Notes **(informative)**
 
 - Use **fresh, single‑purpose addresses** to limit linkability. Rotate freely.  
 - Consider Tor/VPN for verifier network queries; cross‑check multiple Esplora endpoints when critical.  
@@ -460,7 +460,7 @@ Suggested set:
 
 ---
 
-## 11) Versioning & Registry **(normative)**
+## 13) Versioning & Registry **(normative)**
 
 - Protocol header string `orangecheck v0` and the seven core lines are **frozen** for v0.  
 - Any change to header, core wording/order, canonicalization, or signature schemes **REQUIRES** a version bump.  
@@ -468,7 +468,7 @@ Suggested set:
 
 ---
 
-## 12) References **(informative)**
+## 14) References **(informative)**
 
 - BIP‑322: Generic Message Signing for Bitcoin  
 - RFC‑2119: Key words for use in RFCs to Indicate Requirement Levels  

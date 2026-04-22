@@ -1,355 +1,189 @@
-# OrangeCheck Protocol (OCP)
+# OrangeCheck
 
-*Portable Bitcoin reputation for the open internet. Sign once with Bitcoin, prove everywhere forever.*
+**Proof of Bitcoin stake for the open web.**
+*Sats as signal. No KYC, no custody.*
 
 [![Status](https://img.shields.io/badge/status-draft-informational)](#) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
 
 ---
 
-## What is OrangeCheck?
+## What this is
 
-**OrangeCheck is the universal reputation layer for the internet**, built on Bitcoin.
+OrangeCheck is a **sybil-resistance primitive**, not a reputation system. You sign one message that links a Bitcoin address to one or more handles (Nostr, GitHub, DNS, Twitter). Anyone can verify from public chain state that the address has **N sats unspent for N days**. Platforms use that signal to filter bots out without asking users for an email, a phone number, or a KYC selfie.
 
-- **Sign once** — Create a cryptographic attestation proving Bitcoin address control
-- **Bind identities** — Link your Bitcoin reputation to Nostr, Twitter, GitHub, DNS, or any identity
-- **Publish everywhere** — Attestations are published to Nostr relays and IPFS for universal discovery
-- **Verify anywhere** — Any platform can independently verify your reputation
-- **Stack reputation** — Combine multiple attestations for compound scores
-- **No custody** — Funds never move; signatures prove control without spending
+- **No custody.** Funds never move.
+- **No account.** The protocol has no server you register with.
+- **No permission.** The proof works on any platform that chooses to read it.
+- **No trust.** Any verifier can recompute metrics directly from the Bitcoin blockchain.
 
-### The Problem
+See **[VISION.md](VISION.md)** for the product brief and business model.
 
-Current reputation systems are:
-- **Platform-locked** — Reddit karma, Twitter followers, GitHub stars don't transfer
-- **Centralized** — Platforms control and can revoke your reputation
-- **Unverifiable** — No cryptographic proof of claims
+## The 30-second pitch
 
-### The Solution
-
-OrangeCheck provides **portable, cryptographically verifiable reputation** through:
-- **Proof of stake** — Bonded satoshis demonstrate skin in the game
-- **Proof of time** — UTXO age demonstrates long-term commitment  
-- **Multi-protocol identity** — Bind Bitcoin reputation to any external identity
-- **Decentralized publishing** — Nostr and IPFS ensure attestations are always discoverable
-- **Independent verification** — Anyone can verify signatures and recompute metrics from blockchain data
-
----
-
-## Quick Start
-
-### 1. Create an Attestation
-
-```javascript
-import { generateAttestation } from '@orangecheck/sdk';
-
-const attestation = await generateAttestation({
-  address: 'bc1q...',
-  identities: [
-    { protocol: 'nostr', identifier: 'npub1alice...' },
-    { protocol: 'twitter', identifier: '@alice' },
-    { protocol: 'github', identifier: 'alice' }
-  ],
-  bond: 1000000,  // 1M sats
-  expires: '2026-01-15T12:00:00Z'
-});
+```
+           ┌───────────────────────────────────────────────┐
+ User  →   │ sign one message with your Bitcoin wallet     │
+           └───────────────────────────────────────────────┘
+                                 ↓
+           ┌───────────────────────────────────────────────┐
+ Proof →   │ { address, identities, sats_bonded, days,     │
+           │   signature, attestation_id }                 │
+           └───────────────────────────────────────────────┘
+                                 ↓
+           ┌───────────────────────────────────────────────┐
+ Apps  →   │  GET /api/check?addr=bc1q…&min_sats=100000    │
+           │  →  { ok: true, sats, days, score }           │
+           └───────────────────────────────────────────────┘
 ```
 
-### 2. Sign with Bitcoin Wallet
+Attackers pay real Bitcoin opportunity cost to defeat it. Honest users pay nothing.
 
-```javascript
-const signature = await wallet.signMessage(attestation.message);
+## The API is the product
+
+### Gate access with one request
+
+```bash
+curl "https://ochk.io/api/check?addr=bc1q...&min_sats=100000&min_days=30"
+# { "ok": true, "sats": 125000, "days": 47, "score": 18.2, "identities": [...] }
 ```
 
-### 3. Publish to Nostr
+### Express / Next middleware
 
-```javascript
-await publishToNostr({
-  attestation,
-  signature,
-  relays: ['wss://relay.damus.io', 'wss://relay.primal.net'],
-  nostrPrivateKey: userNsec  // If binding to Nostr identity
-});
+```ts
+import { ocGate } from '@orangecheck/gate';
+
+app.post('/post', ocGate({ minSats: 100_000, minDays: 30 }), handler);
 ```
 
-### 4. Verify Anywhere
+### Or verify a raw attestation
 
-```javascript
-// By attestation ID
-const result = await verifyAttestation('a3f5b8c2...');
+```ts
+import { verify } from '@orangecheck/sdk';
 
-// By Bitcoin address
-const attestations = await findAttestations({ address: 'bc1q...' });
-
-// By Nostr identity
-const attestations = await findAttestations({ nostr: 'npub1...' });
-
-if (result.ok) {
-  console.log('Reputation:', result.metrics);
-  // { sats_bonded: 1000000, days_unspent: 365, score: 85 }
+const result = await verify({ addr, msg, sig, scheme: 'bip322' });
+if (result.ok && result.metrics.sats_bonded >= 100_000) {
+  // let them through
 }
 ```
 
----
+That's it. That's the integration surface.
 
-## Architecture
+## Creating an attestation (user side)
 
-### Attestation Flow
+1. Open `https://ochk.io` and paste your address (or connect wallet).
+2. Add optional handles — Nostr npub, GitHub username, DNS domain, Twitter handle.
+3. Sign the one-line message with **BIP-322** (preferred) or legacy `signmessage` (P2PKH only).
+4. Your proof is published to Nostr relays and gets a shareable URL.
 
-```
-1. User creates canonical message with identities
-2. User signs message with Bitcoin wallet (BIP-322)
-3. Attestation published to Nostr relays (kind 30078)
-4. Anyone can discover via attestation ID, address, or identity
-5. Verifiers independently check signature + blockchain state
-6. Reputation is portable across all platforms
-```
-
-### Key Components
-
-- **Canonical Message** — Fixed-format text with identities, address, nonce, timestamp
-- **Attestation ID** — SHA-256 hash of message (content-addressed identifier)
-- **Bitcoin Signature** — BIP-322 or legacy signature proving address control
-- **Nostr Event** — Parameterized replaceable event (kind 30078) for discovery
-- **JSON Envelope** — Complete attestation data for verification
-
----
-
-## Core Concepts
-
-### Multi-Protocol Identity Bindings
-
-Bind your Bitcoin reputation to any identity:
+The signed message is deterministic, human-readable, and exactly this:
 
 ```
-identities: github:alice,nostr:npub1alice...,twitter:@alice
+orangecheck
+identities: github:alice,nostr:npub1...
+address: bc1q...
+purpose: portable reputation attestation (non-custodial)
+nonce: 8f3a...e1
+issued_at: 2026-04-20T10:00:00Z
+ack: I attest control of this address and bind it to my identities.
 ```
 
-**Supported Protocols:**
-- `nostr:npub1...` — Nostr public key
-- `dns:example.com` — DNS domain
-- `twitter:@username` — Twitter/X handle
-- `github:username` — GitHub username
-- `email:user@example.com` — Email address
-- `web:https://example.com` — Web origin
-- `did:method:identifier` — Decentralized Identifier
+Optional signed extensions (sorted lexicographically): `aud`, `bond`, `expires`, `network`, `scope`.
 
-### Decentralized Publishing
+## What an attestation proves, exactly
 
-Attestations are published to:
-- **Nostr relays** — Discoverable via NIP-78 parameterized replaceable events
-- **IPFS** — Content-addressed storage with CID
-- **Local storage** — Optional for private attestations
+| Claim | Strength | How a verifier checks |
+|---|---|---|
+| You control address `bc1q…` | Cryptographic | BIP-322 signature verification |
+| The address holds `N` sats | On-chain, trustless | Query Esplora / mempool.space for UTXOs |
+| The oldest bonded UTXO is `N` days old | On-chain, trustless | Compare confirmation time to now |
+| You claim to be `@alice` on GitHub | **Self-asserted** | Verifier must check the GitHub gist / DNS TXT / tweet independently |
 
-### Reputation Stacking
+The first three are mathematical. The fourth is a claim that platforms verify out-of-band the same way they verify any social handle — e.g., DNS TXT record, GitHub gist, signed Nostr event.
 
-Combine multiple attestations for compound reputation:
+## Supported identity bindings
 
-```javascript
-const attestations = await findAttestations({ 
-  nostr: 'npub1alice...' 
-});
+In v2 we support four protocols where verification is actually feasible:
 
-const totalSats = attestations.reduce((sum, a) => 
-  sum + a.metrics.sats_bonded, 0
-);
+- `nostr:npub1…` — verify by finding a signed Nostr event containing the attestation ID.
+- `github:username` — verify by finding a public gist or repo file containing the attestation ID.
+- `dns:example.com` — verify by looking up a TXT record at `_orangecheck.example.com`.
+- `twitter:@handle` — verify by finding a public tweet containing the attestation ID (manual proof URL).
 
-const compoundScore = calculateCompoundScore(attestations);
+Other protocols (`email:`, `web:`, `did:`) are explicitly out of scope for v2 until a real integrator asks.
+
+## Scoring
+
+Two things, nothing more:
+
+**`sats_bonded`** and **`days_unspent`** are raw metrics. They are the source of truth. RPs (relying parties) should compare them against their own thresholds.
+
+For UX, the protocol defines one reference score:
+
+```
+score_v0 = round( ln(1 + sats_bonded) × (1 + days_unspent / 30), 2 )
 ```
 
----
+There is no second algorithm. RPs with specialized needs write their own against raw metrics; the protocol does not try to preempt every use case.
 
-## Use Cases
+## Publishing & discovery (Nostr)
 
-### Sybil Resistance
+Attestations are published as Nostr kind **30078** parameterized replaceable events with `d = orangecheck:<attestation_id>`. Discovery queries:
 
-Require minimum Bitcoin reputation to prevent spam:
-
-```javascript
-if (reputation.sats_bonded >= 100000 && reputation.days_unspent >= 30) {
-  // User has proven reputation, allow access
-}
+```json
+{"kinds": [30078], "#d":       ["orangecheck:<attestation_id>"]}   // by ID
+{"kinds": [30078], "#address": ["bc1q..."]}                         // by address
+{"kinds": [30078], "#i":       ["github:alice"]}                    // by identity
 ```
 
-### Portable Social Graph
+Publishing is **optional**. The attestation is a self-contained JSON blob signed with Bitcoin. Nostr is a distribution channel, not a dependency.
 
-Prove reputation when joining new platforms:
+## What this protocol does not do
 
-```javascript
-const reputation = await fetchReputation(userNpub);
-if (reputation.score > 50) {
-  // Auto-verify user, skip onboarding
-}
-```
-
-### Cross-Platform Verification
-
-Link accounts with cryptographic proof:
-
-```javascript
-const attestations = await findAttestations({ 
-  twitter: '@alice' 
-});
-
-if (attestations.length > 0) {
-  // Verify Bitcoin signature
-  // Check Twitter for confirmation tweet
-  // Link accounts with proof
-}
-```
-
-### Reputation-Gated Features
-
-Build features that require proven reputation:
-
-```javascript
-// Premium features for high-reputation users
-if (reputation.score >= 80) {
-  enablePremiumFeatures();
-}
-
-// Tiered access based on stake
-if (reputation.sats_bonded >= 1000000) {
-  grantGoldTier();
-}
-```
-
----
+- **No agent/delegation credentials.** A prior draft explored this (UCAN-style over Bitcoin). It's been retired — it doesn't use Bitcoin in a load-bearing way. If you need delegation, use UCAN.
+- **No ZK / private balance proofs.** The address is public. Use fresh addresses per attestation if linkability is a concern.
+- **No on-chain attestations.** Everything is off-chain signed messages; the chain only stores the bonded UTXOs.
+- **No aggregation into a unified score.** Every "reputation aggregator" becomes a walled garden eventually.
 
 ## Documentation
 
-- **[SPEC.md](SPEC.md)** — Normative specification for implementers
-- **[PROTOCOL.md](PROTOCOL.md)** — Protocol overview and design rationale
-- **[NIP_ORANGECHECK.md](NIP_ORANGECHECK.md)** — Nostr NIP proposal for attestation publishing
-- **[registry/extensions.md](registry/extensions.md)** — Extension key registry
-- **[registry/scoring.md](registry/scoring.md)** — Scoring algorithm registry
-
----
-
-## Security & Privacy
-
-### Identity Binding Security
-
-- Identity bindings are **self-asserted** and not automatically verified
-- RPs MUST verify identities independently:
-  - `nostr:npub1...` → Verify Nostr event signature
-  - `twitter:@user` → Check for tweet with attestation ID
-  - `github:user` → Check for gist/repo with attestation
-  - `dns:example.com` → Check DNS TXT record or .well-known file
-
-### Privacy Considerations
-
-- **Address linkability** — Each attestation links Bitcoin address to identities
-- **Recommendation** — Use fresh addresses per attestation, rotate regularly
-- **Pseudonymity** — Empty `identities:` field allows pseudonymous attestations
-- **Selective disclosure** — Create separate attestations for different contexts
-
-### Best Practices
-
-- Use **fresh, single-purpose addresses** to limit linkability
-- **Time-box attestations** with `expires` extension
-- **Bind to origin** with `aud` extension for site-specific attestations
-- **Verify independently** — Always check Bitcoin signatures and blockchain state
-- **Query multiple relays** — Cross-check Nostr events from multiple sources
-
----
-
-## Network Effects
-
-### Why OrangeCheck Wins
-
-**Every new platform that integrates makes ALL attestations more valuable:**
-
-1. **User creates attestation** → Published to Nostr
-2. **Platform A integrates** → Users can prove reputation on Platform A
-3. **Platform B integrates** → Same attestation now works on Platform B
-4. **Platform C integrates** → Attestation value compounds
-5. **Network effects accelerate** → More platforms = more valuable attestations
-
-**Result:** Reputation becomes **infinitely portable** and **universally recognized**.
-
-### Draining Network Effects
-
-OrangeCheck drains value from walled gardens:
-
-- **Twitter/X** — Prove reputation WITHOUT Twitter's permission
-- **Reddit** — Karma becomes portable and Bitcoin-backed
-- **GitHub** — Contribution history becomes verifiable reputation
-- **Discord/Telegram** — Spam prevention without centralized moderation
-- **Nostr** — Instant sybil resistance for the entire network
-
-**Once you have an OrangeCheck attestation, it works EVERYWHERE.**
-
----
-
-## Contributing
-
-- Read **[SPEC.md](SPEC.md)** first; proposals must not break canonicalization
-- Open issues/PRs with **clear diffs** and, where applicable, **new test vectors**
-- For new extension keys, update **`/registry/extensions.md`** and provide conformance cases
-- For new identity protocols, propose in **`/registry/extensions.md`** with verification methods
-
----
-
-## License
-
-- **Protocol & Spec text**: CC‑BY‑4.0
-- **Reference code**: MIT
-- "OrangeCheck" name/logo: trademark of their owners; do not imply endorsement
-
----
+| Doc | Purpose |
+|---|---|
+| **[VISION.md](VISION.md)** | Product brief, audiences, business model, scope rules |
+| **[PROTOCOL.md](PROTOCOL.md)** | High-level protocol design and rationale |
+| **[SPEC.md](SPEC.md)** | Normative specification for implementers |
+| **[NIP_ORANGECHECK.md](NIP_ORANGECHECK.md)** | Nostr NIP for attestation publishing (kind 30078) |
+| **[registry/extensions.md](registry/extensions.md)** | Registered extension keys |
+| **[registry/scoring.md](registry/scoring.md)** | Reference score algorithm |
 
 ## FAQ
 
 **Do coins move?**
+No. Message signing only. Funds remain in your wallet, always.
 
-No. Message signing only; funds remain in your wallet.
+**Is this reputation?**
+No. It's a stake receipt. Reputation implies social judgment; this is a cryptographic proof that someone chose to lock opportunity cost against a handle. Call it what it is.
 
-**Which wallets are supported?**
+**What prevents faking?**
+Bitcoin signatures are cryptographically unforgeable. The chain state is publicly auditable. The only way to "fake" a high-`sats × days` attestation is to actually hold that Bitcoin for that time.
 
-Any that can sign messages. Prefer **BIP‑322**; legacy `signmessage` is for `1…` addresses only.
+**What if my coins move?**
+The attestation becomes `bond_insufficient` (if `bond:` was set) or `bond_zero` (if not). Any verifier will report this on next check. There is no grace period — it's live chain state.
 
-**What exactly does an attestation prove?**
+**Which wallets?**
+Anything that signs BIP-322. Sparrow, Electrum, Bitcoin Core, most hardware wallets via PSBT. Legacy `signmessage` works for `1…` addresses.
 
-1. You control a Bitcoin address (cryptographic signature)
-2. The address has X sats bonded (blockchain verification)
-3. The oldest UTXO is Y days old (blockchain verification)
-4. You claim to be associated with certain identities (self-asserted, verify independently)
-
-**How is this different from NIP-05?**
-
-NIP-05 proves DNS → Nostr mapping. OrangeCheck proves Bitcoin → Multi-protocol identity mapping with quantifiable reputation (sats + time).
-
-**Can I have multiple attestations?**
-
-Yes! Stack multiple attestations for compound reputation. Each can have different identities, bonds, and expiration dates.
-
-**How do I verify an identity binding?**
-
-Identity bindings are self-asserted. Verify independently:
-- Nostr: Check event signature
-- Twitter: Look for tweet with attestation ID
-- GitHub: Check gist or repo
-- DNS: Check TXT record or .well-known file
-
-**What prevents someone from creating fake attestations?**
-
-- Bitcoin signatures are cryptographically verifiable
-- Blockchain state is publicly auditable
-- Identity bindings can be verified independently
-- High-reputation attestations require real Bitcoin stake
-
-**How long do attestations last?**
-
-Forever, unless you:
-- Spend the bonded UTXOs (invalidates attestation)
-- Set an `expires` timestamp (attestation expires)
-- Publish a new attestation with same ID (replaces old one)
+**Why Bitcoin?**
+Because the opportunity-cost-of-holding is real, measurable, and adversary-agnostic. Ethereum gas is volatile; other-chain reserves aren't credibly neutral. Bitcoin UTXOs give us the cleanest economic signal on the open internet.
 
 **Can I revoke an attestation?**
+Spend the bonded UTXOs (implicit) or publish a replacing attestation with the same ID (explicit).
 
-Yes, by spending the bonded UTXOs or publishing a new attestation that replaces it.
+## License
+
+- Protocol & spec text: **CC-BY-4.0**
+- Reference code: **MIT**
+- "OrangeCheck" name/logo: trademark; don't imply endorsement.
 
 ---
 
-**Built with Bitcoin. Verified by anyone. Portable everywhere.**
-
+**Built with Bitcoin. Verified by anyone. Consumed by one API call.**

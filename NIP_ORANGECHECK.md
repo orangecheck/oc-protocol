@@ -1,32 +1,26 @@
-# NIP-XX: Bitcoin Reputation Attestations (OrangeCheck)
+# NIP-XX: OrangeCheck — Proof of Bitcoin Stake
 
 `draft` `optional`
+
+> **Status.** Implementer-ready draft. Shipped in production at `ochk.io`.
+> Planned as a formal NIP proposal to `nostr-protocol/nips` once two or more
+> independent implementations interoperate.
 
 ---
 
 ## Abstract
 
-This NIP defines a standard for publishing and discovering **Bitcoin reputation attestations** on Nostr. Attestations are cryptographically signed proofs of Bitcoin address control that can be bound to Nostr identities and other external identities, enabling portable, verifiable reputation across platforms.
+This NIP defines how to publish and discover **OrangeCheck attestations** over Nostr. An attestation is a cryptographically signed statement that binds a Bitcoin address to one or more handles (Nostr, GitHub, DNS, Twitter, …) such that any verifier can recompute from live Bitcoin chain state how many sats the address holds and how long those UTXOs have been unspent.
 
----
+The design goal is a **sybil-resistance primitive for the open web**. An attestation attached to a Nostr pubkey lets relays, apps, forums, and DAOs filter access by on-chain economic commitment without requiring accounts, KYC, or a centralised identity provider.
 
 ## Motivation
 
-Current reputation systems are:
-- **Platform-locked:** Reddit karma, Twitter followers, GitHub stars don't transfer
-- **Centralized:** Platforms control and can revoke reputation
-- **Unverifiable:** No cryptographic proof of claims
+Every open protocol shares one problem: bot and sybil filtering without becoming a centralised identity provider. A small Bitcoin UTXO, left alone, is the cheapest credible proof of commitment available on the open internet. Honest users pay nothing but time; attackers pay real opportunity cost.
 
-Bitcoin provides a neutral, censorship-resistant foundation for reputation through:
-- **Proof of stake:** Bonded satoshis demonstrate skin in the game
-- **Proof of time:** UTXO age demonstrates long-term commitment
-- **Cryptographic verification:** BIP-322 signatures prove address control
+OrangeCheck makes that proof portable: a single signed message covers every platform that chooses to consume it, and every verifier can recompute independently from public data.
 
-This NIP enables **portable reputation** by publishing Bitcoin attestations to Nostr, where they can be:
-- Discovered by any platform
-- Verified independently
-- Composed into compound reputation scores
-- Bound to Nostr identities (npubs)
+Full protocol details live in **[SPEC.md](./SPEC.md)**. This NIP covers only the Nostr wire format.
 
 ---
 
@@ -34,7 +28,7 @@ This NIP enables **portable reputation** by publishing Bitcoin attestations to N
 
 ### Event Kind
 
-This NIP uses **kind `30078`** (Parameterized Replaceable Event per NIP-78) for storing Bitcoin reputation attestations.
+Attestations use **kind `30078`** — NIP-78 "application-specific data" (parameterised replaceable).
 
 ### Event Structure
 
@@ -42,369 +36,163 @@ This NIP uses **kind `30078`** (Parameterized Replaceable Event per NIP-78) for 
 {
   "kind": 30078,
   "tags": [
-    ["d", "orangecheck:<attestation_id>"],
-    ["addr", "<bitcoin_address>"],
-    ["sats", "<sats_bonded>"],
-    ["days", "<days_unspent>"],
-    ["score", "<score>"],
-    ["v", "<verification_url>"],
-    ["i", "<protocol>:<identifier>", ...],
-    ["expires", "<unix_timestamp>"]
+    ["d",          "<attestation_id>"],
+    ["address",    "<bitcoin_address>"],
+    ["scheme",     "bip322"],
+    ["issued_at",  "<rfc3339>"],
+    ["i",          "nostr:npub1..."],
+    ["i",          "github:alice"],
+    ["expires",    "<rfc3339>"],
+    ["relay",      "wss://relay.example.com"]
   ],
-  "content": "<attestation_json>",
+  "content":    "<attestation_envelope_json>",
   "created_at": <unix_timestamp>,
-  "pubkey": "<nostr_pubkey>",
-  "sig": "<nostr_event_signature>"
+  "pubkey":     "<nostr_pubkey>",
+  "sig":        "<nostr_event_signature>"
 }
 ```
 
-### Tag Definitions
+The event `content` is the full JSON attestation envelope (see [SPEC §5.3](./SPEC.md#53-json-envelope)) — a self-contained, offline-verifiable blob including the canonical message, Bitcoin signature, and metadata.
 
-#### Required Tags
+### Tag definitions
 
-- **`d` (identifier):** Unique attestation identifier in format `orangecheck:<attestation_id>`
-  - `attestation_id` is SHA-256 hash of the canonical Bitcoin message (64 hex chars)
-  - Makes event parameterized replaceable (newer attestations replace older ones)
+| Tag | Required | Value | Purpose |
+|---|---|---|---|
+| `d` | ✅ | `<attestation_id>` — SHA-256 of the canonical message, 64 lowercase hex chars. | Parameterised-replaceable identifier. |
+| `address` | ✅ | Bitcoin singlesig address (mainnet default; testnet/signet via `network:` extension in the signed message). | Enables discovery by address. |
+| `scheme` | ✅ | `bip322` (preferred) or `legacy` (P2PKH only). | Enables OC events to be distinguished from other kind-30078 traffic. |
+| `issued_at` | ✅ | RFC-3339 UTC timestamp, matches the signed message. | |
+| `i` | ✖ (0+) | `<protocol>:<identifier>` — one tag per bound handle. | Enables discovery by handle. |
+| `expires` | ✖ | RFC-3339 UTC. Mirrors the optional `expires:` extension in the signed message. | |
+| `relay` | ✖ (0+) | Additional relay hints from the publisher. | |
 
-- **`addr` (Bitcoin address):** The Bitcoin address from the attestation
-  - Format: `bc1q...` (mainnet), `tb1q...` (testnet), or legacy formats
-  - Enables discovery by Bitcoin address
+### Required invariants
 
-- **`v` (verification URL):** URL where attestation can be independently verified
-  - Format: `https://ochk.io/verify/<attestation_id>` or similar
-  - MUST support GET request returning verification result
+1. The event `content` MUST be parseable as a JSON object with at minimum `attestation_id`, `scheme`, `address`, `message`, and `signature` fields.
+2. `sha256(content.message)` MUST equal the `d` tag value AND the `attestation_id` inside the envelope.
+3. `content.address` MUST equal the `address` tag value.
+4. Every `i` tag MUST have the form `<protocol>:<identifier>` with a lowercase alphanumeric protocol and a non-empty identifier.
+5. Unknown tags MUST be preserved by relays and MAY be ignored by consumers.
 
-#### Optional Tags
+### Signing
 
-- **`sats` (bonded satoshis):** Amount of satoshis bonded in the attestation
-  - Integer value computed at publish time
-  - Enables filtering by minimum reputation stake
+The Nostr event is signed as usual (NIP-01 Schnorr signature over the event id). Two publishing conventions coexist:
 
-- **`days` (days unspent):** Age of oldest UTXO in days
-  - Integer value computed at publish time
-  - Enables filtering by time commitment
+- **Self-signed** — when a `nostr:npub1...` identity is bound in the attestation, the event SHOULD be signed by that npub's private key. This lets consumers trust that the Nostr publisher is the same entity the attestation claims. NIP-07 browser extensions handle this flow.
+- **Service-signed** — when no Nostr identity is bound, or when the publisher is a service, the event MAY be signed by an ephemeral or service key. Consumers still trust the Bitcoin signature inside the envelope; the Nostr signature is for relay admission and replay control only.
 
-- **`score` (reputation score):** Computed reputation score
-  - Algorithm-dependent (e.g., OrangeCheck v1 score)
-  - Advisory only; clients should verify raw metrics
+---
 
-- **`i` (identity bindings):** External identity bindings
-  - Format: `<protocol>:<identifier>`
-  - Multiple `i` tags allowed (one per identity)
-  - Examples: `nostr:npub1...`, `twitter:@alice`, `github:alice`, `dns:alice.com`
-  - Enables discovery by external identity
+## Discovery
 
-- **`expires` (expiration timestamp):** Unix timestamp when attestation expires
-  - Clients SHOULD warn or reject expired attestations
-  - Enables automatic cleanup of stale attestations
-
-### Content Field
-
-The `content` field contains the **full attestation JSON envelope** for complete verification:
+### By attestation ID
 
 ```json
-{
-  "ocp_version": "v1",
-  "attestation_id": "a3f5b8c2d1e4f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
-  "scheme": "bip322",
-  "address": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  "identities": [
-    {"protocol": "nostr", "identifier": "npub1alice..."},
-    {"protocol": "twitter", "identifier": "@alice"}
-  ],
-  "message": "orangecheck v1\nidentities: nostr:npub1alice...,twitter:@alice\n...",
-  "message_b64url": "b3Jhbmdl...",
-  "signature": "AkcwRAIg...",
-  "issued_at": "2025-01-15T12:00:00Z",
-  "expires_at": "2026-01-15T12:00:00Z",
-  "verification_url": "https://ochk.io/verify/a3f5b8c2...",
-  "relay_hints": ["wss://relay.damus.io", "wss://relay.primal.net"]
-}
+{ "kinds": [30078], "#d": ["<attestation_id>"] }
 ```
 
-### Event Signing
-
-- If the attestation contains a `nostr:npub1...` identity binding, the event **MUST** be signed by that npub's private key
-- If no Nostr identity is bound, the event **MAY** be signed by any key (ephemeral or service key)
-- This ensures cryptographic link between Nostr identity and Bitcoin attestation
-
----
-
-## Discovery Queries
-
-### By Attestation ID
+### By Bitcoin address
 
 ```json
-{
-  "kinds": [30078],
-  "#d": ["orangecheck:<attestation_id>"]
-}
+{ "kinds": [30078], "#address": ["<bitcoin_address>"] }
 ```
 
-### By Bitcoin Address
+### By bound identity
 
 ```json
-{
-  "kinds": [30078],
-  "#addr": ["<bitcoin_address>"]
-}
+{ "kinds": [30078], "#i": ["github:alice"] }
+{ "kinds": [30078], "#i": ["nostr:npub1..."] }
+{ "kinds": [30078], "#i": ["dns:example.com"] }
 ```
 
-### By Nostr Identity
+### Distinguishing OC events from other NIP-78 traffic
 
-```json
-{
-  "kinds": [30078],
-  "authors": ["<pubkey>"]
-}
-```
-
-### By External Identity
-
-```json
-{
-  "kinds": [30078],
-  "#i": ["twitter:@alice"]
-}
-```
-
-### By Minimum Reputation
-
-```json
-{
-  "kinds": [30078],
-  "#sats": ["1000000"],
-  "#days": ["365"]
-}
-```
-
-Note: Relay support for numeric tag filtering may vary. Clients should filter results locally if needed.
+Kind 30078 is shared across NIP-78 apps. When aggregating across kind 30078 without a subject filter, consumers SHOULD require `scheme = bip322 | legacy` (no other NIP-78 consumer uses that tag) plus a valid JSON envelope in `content`.
 
 ---
 
-## Verification Flow
+## Verification workflow
 
-1. **Discover attestation** via Nostr query
-2. **Extract content** from event's `content` field
-3. **Verify attestation ID:** Compute `SHA-256(message)` and compare to `attestation_id`
-4. **Verify Bitcoin signature:** Use BIP-322 or legacy signature verification
-5. **Verify Nostr signature:** Validate event signature matches `pubkey`
-6. **Verify identity binding:** If `nostr:npub1...` is bound, ensure event `pubkey` matches
-7. **Compute metrics:** Query Bitcoin blockchain for current UTXO state
-8. **Check expiration:** Warn if `expires` timestamp is in the past
+1. Fetch the event. Verify the NIP-01 Schnorr signature.
+2. Parse `content` as JSON. Verify `sha256(content.message)` equals both the `d` tag and `content.attestation_id`.
+3. Verify `content.signature` against `content.address` and `content.message` using the declared `scheme` (BIP-322 or legacy).
+4. Recompute metrics from live Bitcoin chain state:
+   - `sats_bonded` — sum of confirmed UTXOs, or `bond:` extension value when present.
+   - `days_unspent` — floor of days since the oldest bonded UTXO confirmed.
+5. Apply local policy:
+   - Reject if `expires_at` is in the past (unless your policy overrides).
+   - Reject if `aud:` extension is present and doesn't match your origin.
+6. Apply thresholds (e.g. `min_sats`, `min_days`) to decide admission.
 
----
-
-## Security Considerations
-
-### Identity Binding
-
-- Identity bindings in attestations are **self-asserted** and not automatically verified
-- Clients MUST verify external identities independently:
-  - `nostr:npub1...` → Verify event is signed by that npub
-  - `twitter:@alice` → Check for tweet containing attestation ID
-  - `github:alice` → Check for gist or repo with attestation
-  - `dns:alice.com` → Check DNS TXT record or .well-known file
-
-### Relay Trust
-
-- Clients SHOULD query multiple relays and cross-check results
-- Malicious relays could omit or modify events
-- Always verify `attestation_id = SHA-256(message)` from event content
-
-### Replay Protection
-
-- Attestations include a `nonce` field to prevent signature reuse
-- Each attestation has a unique `attestation_id`
-- Replaceable events ensure only latest attestation is visible
-
-### Privacy
-
-- Publishing attestations links Bitcoin addresses to Nostr identities
-- Users should use fresh Bitcoin addresses per attestation
-- Consider using separate npubs for different contexts
-- Empty identity bindings allow pseudonymous attestations
-
-### Spam Prevention
-
-- Relays MAY require proof-of-work (NIP-13) for kind 30078 events
-- Relays MAY rate-limit attestation publishing
-- Clients SHOULD validate minimum reputation thresholds
+Steps 2–4 are normative and defined in [SPEC.md](./SPEC.md). Step 5–6 are local policy.
 
 ---
 
-## Use Cases
+## Revocation
 
-### Sybil Resistance
+There is no explicit revocation event. Revocation is achieved two ways:
 
-Platforms can require minimum Bitcoin reputation to prevent spam:
+1. **Implicit on-chain** — spending the bonded UTXOs drops `sats_bonded` below `bond:` (or to zero), which every verifier sees on next check.
+2. **Explicit parameterised replacement** — the publisher emits a new kind-30078 event with the same `d` value. Because the d-tag is the attestation ID and the ID is content-addressed, a replacement event carries a *different* ID; the old event remains discoverable but the new one supersedes it for the publisher's intent. Relays applying NIP-78 replacement semantics will keep only the newest event per `(pubkey, kind, d)` triple.
 
-```javascript
-const attestations = await queryNostr({
-  kinds: [30078],
-  authors: [userNpub],
-  "#sats": ["100000"], // Minimum 100k sats
-  "#days": ["30"]      // Minimum 30 days old
-});
-
-if (attestations.length > 0) {
-  // User has proven reputation, allow access
-}
-```
-
-### Portable Social Graph
-
-Users can prove reputation when joining new platforms:
-
-```javascript
-// User joins new Nostr client
-const reputation = await fetchReputation(userNpub);
-if (reputation.score > 50) {
-  // Auto-verify user, skip onboarding
-  // Grant trusted user privileges
-}
-```
-
-### Reputation Stacking
-
-Combine multiple attestations for compound reputation:
-
-```javascript
-const attestations = await queryNostr({
-  kinds: [30078],
-  "#i": [`nostr:${userNpub}`]
-});
-
-const totalSats = attestations.reduce((sum, a) => 
-  sum + parseInt(a.tags.find(t => t[0] === 'sats')?.[1] || 0), 0
-);
-
-const compoundScore = calculateScore(totalSats, attestations);
-```
-
-### Cross-Platform Verification
-
-Verify user's reputation from other platforms:
-
-```javascript
-// User claims Twitter account
-const attestations = await queryNostr({
-  kinds: [30078],
-  "#i": ["twitter:@alice"]
-});
-
-if (attestations.length > 0) {
-  // Verify attestation signature
-  // Check Twitter for confirmation tweet
-  // Link accounts with cryptographic proof
-}
-```
+An explicit revocation event kind is deliberately **not** defined by this NIP. Feedback welcome; propose an update if you need one.
 
 ---
 
-## Implementation Notes
+## Client responsibilities
 
-### Client Responsibilities
+### Publishers (SHOULD)
 
-- Generate attestations with proper canonical message format
-- Sign Bitcoin message with BIP-322 or legacy scheme
-- Publish to Nostr relays as kind 30078 events
-- Verify attestations before displaying reputation
-- Handle expired attestations gracefully
+- Emit exactly one kind-30078 event per (attestation_id, pubkey).
+- Include all bound handles as `i` tags for discovery.
+- Include at least one `relay` tag if the envelope lists relay hints.
+- Verify the attestation locally before publishing (signature, ID match).
 
-### Relay Responsibilities
+### Consumers (MUST)
 
-- Store kind 30078 events as parameterized replaceable
-- Support tag-based queries (`#d`, `#addr`, `#i`, `#sats`, `#days`)
-- Optionally require proof-of-work for spam prevention
-- Optionally validate attestation format before accepting
+- Verify the Bitcoin signature in `content.signature` against `content.address` and `content.message`.
+- Recompute metrics from public chain state; never trust `content.metrics` if present.
+- Ignore unknown tags gracefully.
 
-### Verifier Responsibilities
+### Consumers (SHOULD)
 
-- Implement full Bitcoin signature verification (BIP-322)
-- Query Bitcoin blockchain for current UTXO state
-- Validate attestation ID matches message hash
-- Verify Nostr event signature
-- Check identity bindings independently
+- Cache verification results for a short window (60 s is reasonable — bond state changes at Bitcoin's block cadence).
+- Cross-check against multiple Esplora-style endpoints when decisions are high-stakes.
+- Surface the raw metrics (`sats_bonded`, `days_unspent`) to end users — scores are advisory.
 
 ---
 
-## Reference Implementation
+## Security considerations
 
-- **Specification:** https://github.com/orangecheck/protocol/blob/main/SPEC_V1.md
-- **JavaScript SDK:** https://github.com/orangecheck/sdk-js
-- **Verifier:** https://ochk.io/verify
-- **Test Vectors:** https://github.com/orangecheck/protocol/tree/main/conformance/v1
-
----
-
-## Examples
-
-### Publishing an Attestation
-
-```javascript
-import { generateAttestation, publishToNostr } from '@orangecheck/sdk';
-
-// Generate attestation
-const attestation = await generateAttestation({
-  address: 'bc1q...',
-  identities: [
-    { protocol: 'nostr', identifier: 'npub1alice...' },
-    { protocol: 'twitter', identifier: '@alice' }
-  ],
-  bond: 1000000,
-  expires: '2026-01-15T12:00:00Z'
-});
-
-// Sign with Bitcoin wallet
-const signature = await wallet.signMessage(attestation.message);
-
-// Publish to Nostr
-await publishToNostr({
-  attestation,
-  signature,
-  relays: ['wss://relay.damus.io', 'wss://relay.primal.net'],
-  nostrPrivateKey: userNsec
-});
-```
-
-### Verifying an Attestation
-
-```javascript
-import { verifyAttestation } from '@orangecheck/sdk';
-
-// Fetch from Nostr
-const event = await relay.get({
-  kinds: [30078],
-  "#d": ["orangecheck:a3f5b8c2..."]
-});
-
-// Verify
-const result = await verifyAttestation({
-  content: JSON.parse(event.content),
-  nostrEvent: event
-});
-
-if (result.ok) {
-  console.log('Reputation:', result.metrics);
-  // { sats_bonded: 1000000, days_unspent: 365, score: 85 }
-}
-```
+- **Identity-binding squatting.** An `i` tag like `github:alice` is a *claim*, not a proof — it tells you the signer chose to assert the handle, not that they control it. Consumers that care about handle ownership MUST verify out-of-band (gist, DNS TXT record, tweet URL, Nostr event).
+- **Address linkability.** Each attestation publicly links a Bitcoin address to the bound handles. Publishers should use fresh, single-purpose addresses per proof when linkability matters.
+- **Replay.** The canonical message includes a random 16-byte nonce + `issued_at` timestamp + fixed header, which bound signatures to their issuance context and prevent cross-context replay.
+- **Relay availability.** OrangeCheck is not dependent on Nostr for correctness — the envelope in `content` is self-contained and offline-verifiable. Nostr is a convenient distribution channel; losing it doesn't invalidate any outstanding proof.
+- **Event-signing key compromise.** A stolen Nostr key can republish or supersede attestations. This only affects discovery, not the underlying Bitcoin proof — the Bitcoin signature in `content.signature` remains the authority.
 
 ---
 
-## Changelog
+## Rationale for design choices
 
-- **2025-01-15:** Initial draft (v1.0.0)
+- **Kind 30078 (NIP-78) over a dedicated kind.** 30078 is already the "application-specific parameterised-replaceable" kind. Allocating a new kind would require upstream assignment and gain nothing — NIP-78 handles the replacement semantics we need. Consumers distinguish OC events via the `scheme` tag.
+- **JSON envelope in `content`.** Keeps the attestation self-describing and valid even when fetched from outside Nostr (IPFS, HTTP, QR code). Tags are indexes; `content` is the source of truth.
+- **Content-addressed IDs.** `attestation_id = sha256(canonical_message)` means the ID proves integrity and two clients can never generate the same ID for different messages. No registry needed.
+- **No ZK / private balance.** Address is public so any verifier can recompute. Privacy is achieved by rotating addresses, not hiding on-chain state.
 
 ---
 
-## See Also
+## Backwards compatibility
 
-- NIP-01: Basic Protocol
-- NIP-05: Mapping Nostr keys to DNS-based internet identifiers
-- NIP-13: Proof of Work
-- NIP-78: Application-specific data
-- BIP-322: Generic Message Signing for Bitcoin
-- OrangeCheck Protocol: https://ochk.io/protocol
+This NIP is additive to Nostr. No changes to NIP-01, NIP-78, or any other NIP are required. Clients that don't recognise OrangeCheck events will treat them as opaque kind-30078 blobs, which is correct behaviour.
 
+An earlier draft of this spec prefixed the `d` tag with `orangecheck:` (e.g., `d: orangecheck:<id>`). The production implementation ships the raw attestation ID in the `d` tag. Consumers SHOULD accept either form for forward compatibility during the transition.
+
+---
+
+## References
+
+- **OrangeCheck Protocol Specification** — [SPEC.md](./SPEC.md)
+- **BIP-322** — Generic Signed Message Format for Bitcoin
+- **NIP-78** — Arbitrary Custom App Data (parameterised replaceable events)
+- **NIP-07** — Browser wallet signing interface
+- **Reference implementation** — `@orangecheck/sdk` (TypeScript), `orangecheck` (Python)

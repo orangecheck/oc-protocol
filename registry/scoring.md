@@ -1,345 +1,81 @@
-# OrangeCheck Scoring Algorithm Registry
+# OrangeCheck Scoring Registry
 
-**Status:** Proposed  
-**Version:** v0 (Draft)
-
----
-
-## Purpose
-
-This registry documents scoring algorithms that MAY be used to compute reputation scores from OrangeCheck proofs. All algorithms operate on the same raw metrics (`sats_bonded`, `days_unspent`) but produce different scores optimized for different use cases.
-
-**Key Principles:**
-- Raw metrics (`sats_bonded`, `days_unspent`) are the source of truth
-- Scores are **advisory** interpretations for UX/comparison
-- RPs MUST validate raw metrics, not just trust scores
-- Subjects MAY suggest algorithms via `scoring:` extension
-- Verifiers MAY implement any subset of algorithms
+**Status:** Normative
+**Version:** v0
 
 ---
 
-## Registered Algorithms
+## Principles
 
-### `v0` (Protocol Reference)
-
-**Formula:**
-```
-score_v0 = round( ln(1 + sats_bonded) * (1 + days_unspent / 30), 2 )
-```
-
-**Output:** Decimal number (typically 10-250)
-
-**Characteristics:**
-- Balanced weighting of sats and time
-- Logarithmic growth (diminishing returns)
-- Unbounded range
-
-**Use Cases:**
-- General purpose reputation
-- Cross-community comparison
-- Default when no specific needs
-
-**Interpretation:**
-- 10-20: Low commitment
-- 20-50: Medium commitment
-- 50-100: Good commitment
-- 100+: Excellent commitment
-
-**Pros:**
-- Smooth, continuous scale
-- Considers both factors equally
-- Reference implementation available
-
-**Cons:**
-- Hard to interpret absolute values
-- Grows slowly for large amounts
-- No clear "good" threshold
+- The raw metrics `sats_bonded` and `days_unspent` are the **source of truth**.
+- Scores are **advisory** interpretations for display only.
+- Relying parties MUST validate raw metrics. They MUST NOT gate access on a score alone.
+- The protocol defines **one** reference algorithm (`v0`). RPs with specialized needs write their own — the registry deliberately does not try to preempt every use case.
 
 ---
 
-### `time-weighted`
+## `v0` — the reference algorithm
 
-**Formula:**
 ```
-score = round( ln(1 + sats_bonded) * (days_unspent / 30)^1.5, 2 )
+score_v0 = round( ln(1 + sats_bonded) × (1 + days_unspent / 30), 2 )
 ```
 
-**Output:** Decimal number (unbounded)
+**Output:** decimal, unbounded (typically 10–250).
+**Use case:** general display, cross-context comparison.
+**Implementers MUST use exactly this formula** if they report a `v0` score.
 
-**Characteristics:**
-- Emphasizes long-term holding
-- Days factor grows faster than linear
-- Rewards patience over amount
+### Interpretation (informative)
 
-**Use Cases:**
-- Marketplace seller reputation
-- Long-term community membership
-- Proof of commitment over time
+| Range | Rough meaning |
+|---|---|
+| 10–20 | Light commitment |
+| 20–50 | Medium commitment |
+| 50–100 | Strong commitment |
+| 100+ | Very strong commitment |
 
-**Interpretation:**
-- Higher scores indicate sustained commitment
-- New addresses score low even with large amounts
-- Encourages "skin in the game" over time
-
-**Pros:**
-- Discourages quick flips
-- Rewards long-term participants
-- Harder to game with fresh capital
-
-**Cons:**
-- Penalizes new participants
-- Slow to build reputation
-- May exclude legitimate newcomers
+These are descriptive, not prescriptive. Platforms should set their own thresholds against raw metrics.
 
 ---
 
-### `amount-weighted`
+## Patterns RPs implement themselves (not registered algorithms)
 
-**Formula:**
+These are useful patterns, but they are **not** protocol-registered scores. They belong to the RP's policy layer.
+
+### Binary threshold
+
 ```
-score = round( ln(1 + sats_bonded)^1.5 * (1 + days_unspent / 30), 2 )
+pass = (sats_bonded >= min_sats) AND (days_unspent >= min_days)
 ```
 
-**Output:** Decimal number (unbounded)
+This is what `/api/check?min_sats=…&min_days=…` returns. It's the common-case sybil gate.
 
-**Characteristics:**
-- Emphasizes capital commitment
-- Sats factor grows faster than logarithmic
-- Rewards large holders
+### Tiers
 
-**Use Cases:**
-- Lending/credit assessment
-- High-value transactions
-- Capital-intensive services
+Pick sat/day cutoffs that make sense for your product (e.g., `silver` at 100k×90d, `gold` at 1M×180d). Don't expect interoperability — "Gold on platform X" does not mean "Gold on platform Y."
 
-**Interpretation:**
-- Higher scores indicate larger capital commitment
-- Time is secondary factor
-- Whales score significantly higher
+### Time-weighted / amount-weighted
 
-**Pros:**
-- Reflects financial capacity
-- Useful for risk assessment
-- Clear correlation with capital
-
-**Cons:**
-- Favors wealthy participants
-- Time becomes less meaningful
-- May create plutocracy
+If your product weighs time or stake more heavily, compute a custom score from raw metrics. Don't publish your formula as a registered algorithm — keep it in your policy code, where it belongs.
 
 ---
 
-### `tier`
+## Why the registry stayed small
 
-**Formula:** Categorical thresholds
+Prior drafts of this document registered `time-weighted`, `amount-weighted`, `tier`, `threshold`, and `percentile` as canonical algorithms. Each one encoded a policy decision that is inherently RP-specific, and each one encouraged implementers to believe that "Gold tier" meant the same thing everywhere. It does not. The canonical move is to push that policy out of the protocol and into the RP. This registry now does that.
 
-**Output:** String enum: `none`, `bronze`, `silver`, `gold`, `platinum`
+If you truly need a new inter-RP scoring algorithm — one that can be meaningfully compared across platforms — propose it with:
 
-**Thresholds:**
-```
-platinum: sats >= 10,000,000 AND days >= 365
-gold:     sats >= 1,000,000  AND days >= 180
-silver:   sats >= 100,000    AND days >= 90
-bronze:   sats >= 10,000     AND days >= 30
-none:     below bronze threshold
-```
+1. A concrete use case involving **multiple independent platforms** that would use the score interchangeably.
+2. A deterministic formula over raw metrics only.
+3. A security analysis of gaming strategies.
+4. Reference test vectors.
 
-**Characteristics:**
-- Discrete tiers, not continuous
-- Both sats AND days required
-- Visual badge-friendly
-
-**Use Cases:**
-- Social media verification badges
-- Tiered access levels
-- Visual reputation display
-
-**Interpretation:**
-- Clear, understandable levels
-- Easy to communicate ("I'm Gold tier")
-- Maps to visual badges/icons
-
-**Pros:**
-- Extremely easy to understand
-- Works well for UI/badges
-- Clear progression path
-
-**Cons:**
-- Arbitrary threshold choices
-- Cliff effects at boundaries
-- Less granular than continuous scores
-
----
-
-### `threshold`
-
-**Formula:** Boolean evaluation
-
-**Output:** `pass` or `fail`
-
-**Parameters:** RP-defined thresholds for `min_sats` and/or `min_days`
-
-**Example:**
-```
-RP policy: min_sats=50000, min_days=60
-Result: pass if (sats >= 50000 AND days >= 60), else fail
-```
-
-**Characteristics:**
-- Binary outcome
-- RP-defined thresholds (not in message)
-- Simple access control
-
-**Use Cases:**
-- Forum posting privileges
-- Feature gating
-- Binary access control
-
-**Interpretation:**
-- Pass: Meets requirements
-- Fail: Does not meet requirements
-
-**Pros:**
-- Simplest possible scoring
-- Clear pass/fail criteria
-- No ambiguity
-
-**Cons:**
-- No gradation
-- Doesn't distinguish among passers
-- Requires RP to set thresholds
-
----
-
-### `percentile` (Advanced)
-
-**Formula:** Rank-based comparison
-
-**Output:** Integer 0-100 (percentile rank)
-
-**Requirements:**
-- Verifier maintains dataset of known proofs
-- Computes rank relative to population
-- Updates as new proofs arrive
-
-**Characteristics:**
-- Relative, not absolute
-- Changes as population changes
-- Requires global view
-
-**Use Cases:**
-- Leaderboards
-- Competitive rankings
-- Relative comparison
-
-**Interpretation:**
-- 90th percentile: Better than 90% of proofs
-- 50th percentile: Median
-- 10th percentile: Bottom 10%
-
-**Pros:**
-- Intuitive interpretation
-- Automatically adjusts to population
-- Good for competition
-
-**Cons:**
-- Requires centralized dataset
-- Scores change over time
-- Not deterministic from proof alone
-
----
-
-## Using Scoring Algorithms
-
-### In Canonical Messages (Subjects)
-
-Subjects MAY include a `scoring:` extension to suggest a preferred algorithm:
-
-```
-orangecheck v0
-npub: alice@nostr.com
-address: bc1q...
-purpose: public reputation bond (non-custodial)
-nonce: a1b2c3d4e5f6...
-issued_at: 2025-01-15T12:00:00Z
-ack: I understand this links this address to my identity.
-scoring: tier
-```
-
-This is **advisory only**. RPs always validate raw metrics.
-
-### In Verifiers
-
-Verifiers MAY compute requested scores if supported:
-
-```json
-{
-  "ok": true,
-  "metrics": {
-    "sats_bonded": 150000,
-    "days_unspent": 120,
-    "score_v0": 46.05,
-    "score_tier": "silver"
-  }
-}
-```
-
-Verifiers MUST always return `sats_bonded` and `days_unspent`.
-
-### In Relying Parties
-
-RPs SHOULD compute scores tailored to their use case:
-
-```typescript
-// Forum: Simple threshold
-const canPost = sats >= 10000 && days >= 30;
-
-// Marketplace: Time-weighted
-const trustScore = Math.log(1 + sats) * Math.pow(days/30, 1.5);
-
-// Social: Tier badge
-const tier = getTier(sats, days);
-```
-
-RPs MUST NOT trust scores without validating raw metrics.
-
----
-
-## Proposing New Algorithms
-
-To propose a new scoring algorithm, submit a PR adding a section to this file with:
-
-1. **Algorithm name** (lowercase, hyphenated, unique)
-2. **Formula** (mathematical expression or pseudocode)
-3. **Output type** (number, string, boolean, etc.)
-4. **Characteristics** (key properties)
-5. **Use cases** (when to use this algorithm)
-6. **Interpretation** (what scores mean)
-7. **Pros and cons** (trade-offs)
-8. **Reference implementation** (optional, link to code)
-
-**Naming conventions:**
-- Use descriptive names: `time-weighted`, not `tw`
-- Hyphenate multi-word names: `amount-weighted`
-- Avoid version numbers in name (use separate versioning)
-
-**Security considerations:**
-- Algorithms MUST be deterministic (same inputs → same output)
-- Algorithms MUST NOT require secrets or external data (except `percentile`)
-- Algorithms SHOULD be resistant to gaming
-- Document any known attack vectors
-
----
-
-## Version History
-
-- **v0 (Draft)**: Initial registry with 6 algorithms (v0, time-weighted, amount-weighted, tier, threshold, percentile)
+Proposals that are really "a policy I want to use on my own app" should stay in the app's code.
 
 ---
 
 ## References
 
-- [SPEC.md](../SPEC.md) - OrangeCheck Protocol Specification
-- [PROTOCOL.md](../PROTOCOL.md) - Protocol Overview
-- [extensions.md](extensions.md) - Extension Key Registry
-
+- [SPEC.md §6](../SPEC.md) — normative scoring rules
+- [PROTOCOL.md §8](../PROTOCOL.md) — scoring design rationale
+- [VISION.md](../VISION.md) — why the registry is intentionally small
