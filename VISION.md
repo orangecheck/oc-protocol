@@ -130,6 +130,7 @@ None of these require venture scale to break even. All of them are aligned with 
 - **One metric displayed at a time.** Users don't want to read a dashboard.
 - **If a platform isn't asking for it, it's speculation.** Build against real integrator pain, not imagined protocols.
 - **Bitcoin is load-bearing, not ornamental.** If we ever find ourselves designing a feature that would work identically on Ed25519, stop.
+- **Bitcoin-native all the way through.** If we ever charge for anything, it's settled in BTC or Lightning. No Stripe. No card processing. No fiat rails bolted onto a Bitcoin-native protocol — that's a category error. The whole point is that value, access, and identity share one settlement layer.
 
 ## What we're not going to do
 
@@ -138,6 +139,7 @@ None of these require venture scale to break even. All of them are aligned with 
 - Not going to build identity-score aggregation that "combines multiple attestations into a unified score." Every aggregator becomes a walled garden in time.
 - Not going to claim this solves AI-agent trust. It doesn't.
 - Not going to run custody of anything, ever.
+- Not going to add fiat billing. When paid tiers arrive, they settle in BTC/Lightning. Stripe-shaped plumbing would silently import every assumption a Bitcoin-native protocol is explicitly rejecting.
 
 ## Current status
 
