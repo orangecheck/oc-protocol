@@ -16,7 +16,7 @@ The design goal is a **sybil-resistance primitive for the open web**. An attesta
 
 ## Motivation
 
-Every open protocol shares one problem: bot and sybil filtering without becoming a centralised identity provider. A small Bitcoin UTXO, left alone, is the cheapest credible proof of commitment available on the open internet. Honest users pay nothing but time; attackers pay real opportunity cost.
+Every open protocol shares one problem: bot and sybil filtering without becoming a centralised identity provider. A small Bitcoin UTXO, left alone, is the only credible proof of commitment available on the open internet. Honest users pay nothing but time; attackers pay real opportunity cost.
 
 OrangeCheck makes that proof portable: a single signed message covers every platform that chooses to consume it, and every verifier can recompute independently from public data.
 

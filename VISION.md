@@ -14,7 +14,7 @@ last_updated: 2026-04-20
 
 ## The one idea
 
-A small Bitcoin balance, left unspent for a while, is the cheapest credible sybil-resistance signal in existence. Everything else costs trust:
+A small Bitcoin balance, left unspent for a while, is the only credible sybil-resistance signal in existence. Everything else costs trust:
 
 - **Proof of work** costs electricity.
 - **KYC** costs dignity and creates a honeypot.
