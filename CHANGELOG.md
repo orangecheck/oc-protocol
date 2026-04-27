@@ -13,6 +13,10 @@ existing attestations.
 
 ## [Unreleased]
 
+### Added
+
+- **`LIFECYCLE.md`** — normative companion document specifying what a publisher MAY do to an attestation after publication. Reaffirms `NIP_ORANGECHECK.md` §Revocation's "no explicit revocation event" stance and clarifies the §Revocation §2 wording ambiguity around "parameterised replacement": because the d-tag *is* the `attestation_id` (line 61), same-d replacement is structurally impossible — two distinct attestations from the same address coexist as separate canonical events under their own `(pubkey, kind, d)` coordinates. The only protocol-level primitives are `expires_at` (forward-looking commitment, set at sign time) and bond withdrawal via UTXO spend (the de-facto exit; verifier sees it on next live check). Reaffirms that dashboard-local hide flags and NIP-09 deletion-request events have no protocol force, and gives implementers a compliance summary distinguishing honest from dishonest "revoke" UI affordances. No protocol changes; clarification only.
+
 - _(nothing pending)_
 
 ## [1.0] — 2026-04-25
