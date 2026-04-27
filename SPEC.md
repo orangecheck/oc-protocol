@@ -247,6 +247,8 @@ Attestations **MAY** be published to Nostr relays for decentralized discovery.
 3. Event `content` contains full JSON envelope for complete verification
 4. Event is replaceable: newer attestations for same ID replace older ones
 
+**Note on key choice (informative).** Authenticity of the attestation is the BIP-322 (or legacy) signature inside `event.content` — the Nostr wrapper key is transport, not proof. Per-event ephemeral keys produce fresh, history-less Nostr pubkeys that anti-spam-strict relays may reject; reference implementations SHOULD instead use a stable service key whose pubkey accumulates relay history once. The reference broadcaster at `attest.ochk.io/api/publish-attestation` accepts an envelope, re-verifies its signature, signs the kind-30078 wrapper with a stable family key, and fans out to a wide relay set. Verifiers MUST NOT trust attestations based on the Nostr wrapper pubkey under any circumstance — re-derive `attestation_id = sha256(canonical_message)` and re-check the inner signature against the address.
+
 ### 6.2 Discovery Queries
 
 **By Attestation ID:**
