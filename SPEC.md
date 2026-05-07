@@ -1,6 +1,6 @@
 ---
 title: OrangeCheck Protocol — Specification
-status: Draft (Normative)
+status: Stable (Normative)
 version: 1.0
 license: CC-BY-4.0
 audience: engineers implementing issuers/verifiers/wallet integrations

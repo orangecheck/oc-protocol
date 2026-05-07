@@ -3,7 +3,7 @@
 **Proof of Bitcoin stake for the open web.**
 *Sats as signal. No KYC, no custody.*
 
-[![Status](https://img.shields.io/badge/status-v0%20shipped-success)](https://ochk.io) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
+[![Status](https://img.shields.io/badge/status-v1.0%20stable-success)](https://ochk.io) [![License](https://img.shields.io/badge/license-CC--BY--4.0%20%2F%20MIT-blue)](#)
 
 ---
 
