@@ -21,6 +21,18 @@ The `identities:` core field (not an extension) supports multi-protocol identity
 
 Earlier drafts also registered `email:`, `web:`, and `did:`; those are **retired for v0** (see SPEC.md §2.1.1). Unknown protocols are preserved in the signed message but MAY be ignored by verifiers.
 
+> **v1 update — the `did:`/key-binding deferral is now resolved separately.**
+> The retirement note above said the retired bindings "may return in a future
+> version once reliable, decentralized proof-of-control mechanisms are
+> specified." OC Attest **v1** specifies exactly that mechanism — a mutual
+> BIP-322 + Nostr signature — but **not** as a v0 `identities:` protocol
+> prefix. It is a distinct artifact, the **Binding Attestation**, defined in
+> [`SPEC-BINDING.md`](../SPEC-BINDING.md). The v0 `identities:` field is
+> unchanged: it still carries only `nostr` / `dns` / `twitter` / `github`,
+> and `email:` / `web:` / `did:` remain retired there. Email in particular
+> stays out of scope for v1 too — it holds no signing key and cannot
+> counter-sign (see `SPEC-BINDING.md` §12).
+
 **Rules:**
 - Identifiers MUST be sorted lexicographically
 - Empty field allowed: `identities: `
@@ -109,6 +121,52 @@ identities:
 - **Registry:** See `/registry/scoring.md` for registered algorithms
 - **Security:** Subjects cannot game scores by choosing algorithms; RPs always validate raw metrics
 - **Example:** `scoring: reference`
+
+---
+
+## Binding Attestation registry (OC Attest v1)
+
+The **Binding Attestation** (`SPEC-BINDING.md`) is a separate artifact from
+the v0 stake attestation. It has its own header literal, its own canonical
+message, its own Nostr kind, and its own — deliberately small — extension
+set.
+
+### Nostr kind
+
+- **`30079`** — OC Attest Binding Attestation. Parameterized replaceable
+  event (NIP-78). **Exclusive to OC Attest**, not co-claimed.
+- **`d`-tag namespace:** `oc-attest-binding:<binding_id>`.
+- Discovery: `#d` (by id), `#btc` (by Bitcoin address), `authors` (by
+  Nostr key). See `SPEC-BINDING.md` §6.
+
+This is distinct from kind **30078**, which carries v0 stake attestations
+(and is co-used by OC Lock device records). A binding event and a stake
+attestation event never collide: different kind, different `d` namespace.
+
+### Registered binding-message extension keys (v1)
+
+Binding-message extensions follow the same discipline as v0 extensions —
+lowercase ASCII keys, sorted lexicographically, signed as part of the
+message. There are exactly two in v1.
+
+#### `expires` (binding)
+- **Type:** RFC-3339 UTC datetime.
+- **Purpose:** Time-box the binding.
+- **Verifier behavior:** If `< now` → **reject** (`E_EXPIRED`). Note this is
+  *stricter* than the v0 stake-attestation `expires` (which only warns):
+  a stale identity claim is a liability, not a soft warning.
+- **Example:** `expires: 2027-05-16T00:00:00Z`
+
+#### `network` (binding)
+- **Type:** enum (`mainnet` | `testnet` | `signet`).
+- **Purpose:** Select network for the `btc:` address.
+- **Verifier behavior:** Address prefix MUST match the selected network
+  (`E_NETWORK` otherwise). Default `mainnet`.
+- **Example:** `network: signet`
+
+There is intentionally **no `bond:`** extension on a binding — stake is the
+v0 artifact's job. A principal MAY hold both a v0 stake attestation and a
+v1 binding; they compose but never merge into one artifact.
 
 ---
 
@@ -242,6 +300,6 @@ These extensions are being discussed but not yet standardized:
 
 ---
 
-**Last Updated:** 2026-04-22  
-**Version:** 1.1.0
+**Last Updated:** 2026-05-16  
+**Version:** 1.2.0 — adds the Binding Attestation registry (OC Attest v1): Nostr kind 30079, `oc-attest-binding:` d-tag namespace, and the `expires` / `network` binding-message extensions.
 
