@@ -19,57 +19,6 @@ existing attestations.
 
 - _(nothing pending)_
 
-## [1.1] — 2026-05-16
-
-OC Attest's first feature beyond the v0 stake attestation: the **Binding
-Attestation** (OC Attest **v1**). This is exactly the feature the protocol
-deferred when it retired the `email:` / `did:` identity bindings in v0
-"until reliable, decentralized proof-of-control mechanisms are specified" —
-a mutual BIP-322 + Nostr counter-signature *is* that mechanism, for any
-counter-identity that holds a signing key. Wire-compatible: the v0 stake
-attestation (`SPEC.md`) is unchanged and existing attestations remain
-valid, so this is a MINOR spec bump.
-
-### Added
-
-- **`SPEC-BINDING.md`** — normative companion specification for the Binding
-  Attestation. Defines a mutually-signed, content-addressed,
-  Nostr-publishable artifact binding **one Bitcoin address** and **one
-  Nostr public key** as a single principal. Header literal
-  `orangecheck-binding` (distinct from the v0 `orangecheck` and the §14
-  `orangecheck-auth` so signatures can never cross-verify); fixed 8-line
-  core message with a `v: 1` line; `binding_id = SHA-256(canonical_message)`;
-  dual signature (BIP-322 by the BTC key as root proof, NIP-01 Schnorr by
-  the Nostr key as counter-signature); the single-message rule; a pure,
-  offline verification algorithm; error codes; trust model; and the
-  email-exclusion rationale. The bond **carries** a signed `did:oc` as a
-  portable, re-importable backup of the account graph — it does **not**
-  define `did:oc` (the auth-host database stays authoritative; AUTH-PLAN
-  §10 Fork 2a).
-- **Nostr kind `30079`** — OC Attest Binding Attestation, parameterized
-  replaceable event, `d`-tag namespace `oc-attest-binding:<binding_id>`.
-  Exclusive to OC Attest, not co-claimed. Registered in `registry/`,
-  `SPEC-BINDING.md` §13, and the family kind registry.
-- **`conformance/vectors/bv01`–`bv08`** — Binding Attestation conformance
-  vectors (canonical message, `binding_id` derivation, valid mutual-signature
-  verification, BIP-322-fail, Nostr-sig-fail, line-smuggling rejection,
-  header-literal-collision rejection, message-mismatch rejection). Indexed
-  in `conformance/vectors/binding-index.json`.
-- **`conformance/generate-binding-vectors.mjs`** — deterministic generator
-  for the `bv*` set, using disclosed burn keys.
-
-### Changed
-
-- `registry/extensions.md` — adds the Binding Attestation registry section
-  (kind 30079, `oc-attest-binding:` d-tag namespace, the `expires` /
-  `network` binding-message extensions); notes that the v0 `did:` deferral
-  is now resolved by a separate artifact, not by re-opening the v0
-  `identities:` prefixes. Bumped to registry version 1.2.0.
-- `SECURITY.md` — adds the Binding Attestation threat model (replay/nonce,
-  the single-message attack, header-literal collision, the
-  email-exclusion rationale, and the "bond is a backup, not a
-  source-of-truth" stance).
-
 ## [1.0] — 2026-04-25
 
 Spec is now stable. The protocol shipped earlier; this release marks the
@@ -126,8 +75,7 @@ Initial public draft.
 - `registry/` — handle-prefix registry (`github:`, `nostr:`, `email:`,
   `ens:`, `twitter:`, `web:`).
 
-[Unreleased]: https://github.com/orangecheck/oc-attest-protocol/compare/v1.1...HEAD
-[1.1]: https://github.com/orangecheck/oc-attest-protocol/compare/v1.0...v1.1
+[Unreleased]: https://github.com/orangecheck/oc-attest-protocol/compare/v1.0...HEAD
 [1.0]: https://github.com/orangecheck/oc-attest-protocol/compare/v0.2...v1.0
 [0.2]: https://github.com/orangecheck/oc-attest-protocol/compare/v0.1...v0.2
 [0.1]: https://github.com/orangecheck/oc-attest-protocol/releases/tag/v0.1

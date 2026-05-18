@@ -137,26 +137,6 @@ Attestations are published as Nostr kind **30078** parameterized replaceable eve
 
 Publishing is **optional**. The attestation is a self-contained JSON blob signed with Bitcoin. Nostr is a distribution channel, not a dependency.
 
-## Binding Attestations (v1)
-
-OC Attest **v1** adds a second artifact: the **Binding Attestation** — a
-mutually-signed proof that **one Bitcoin address** and **one Nostr public
-key** are the same principal. The BTC key signs the canonical message via
-BIP-322 (the root proof); the Nostr key counter-signs by publishing the
-artifact as a Nostr event (kind **30079**). A verifier checks both
-signatures with zero trust in OrangeCheck or any server.
-
-This is the feature the protocol deferred when it retired the `email:` /
-`did:` identity bindings "until reliable, decentralized proof-of-control
-mechanisms are specified" — a counter-signature *is* that mechanism, for
-any identity that holds a signing key. Email is **not** a bindable identity
-(it holds no key, it cannot counter-sign). The binding **carries** a signed
-`did:oc` as a portable backup of the account graph; it does not redefine
-how `did:oc` is minted.
-
-The stake attestation (above) and the Binding Attestation are separate
-artifacts that compose but never merge. See **[SPEC-BINDING.md](SPEC-BINDING.md)**.
-
 ## What this protocol does not do
 
 - **No agent/delegation credentials.** A prior draft explored this (UCAN-style over Bitcoin). It's been retired — it doesn't use Bitcoin in a load-bearing way. If you need delegation, use UCAN.
@@ -170,8 +150,7 @@ artifacts that compose but never merge. See **[SPEC-BINDING.md](SPEC-BINDING.md)
 |---|---|
 | **[VISION.md](VISION.md)** | Product brief, audiences, business model, scope rules |
 | **[PROTOCOL.md](PROTOCOL.md)** | High-level protocol design and rationale |
-| **[SPEC.md](SPEC.md)** | Normative specification for the v0 stake attestation |
-| **[SPEC-BINDING.md](SPEC-BINDING.md)** | Normative specification for the v1 Binding Attestation — a dual-signed BTC ⇄ Nostr key binding (kind 30079) |
+| **[SPEC.md](SPEC.md)** | Normative specification for implementers |
 | **[NIP_ORANGECHECK.md](NIP_ORANGECHECK.md)** | Nostr NIP for attestation publishing (kind 30078) |
 | **[LIFECYCLE.md](LIFECYCLE.md)** | Normative lifecycle stance — `expires_at` and bond withdrawal are the only in-protocol primitives; no revocation envelope is defined |
 | **[registry/extensions.md](registry/extensions.md)** | Registered extension keys |
