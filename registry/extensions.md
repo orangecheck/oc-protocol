@@ -13,10 +13,10 @@ The `identities:` core field (not an extension) supports multi-protocol identity
 
 **Format:** `protocol:identifier[,protocol:identifier...]`
 
-**Registered Protocols (v0):**
+**Registered Protocols:**
 - `nostr:npub1...` — Nostr public key (bech32 npub format, 63 chars)
 - `dns:example.com` — DNS domain
-- `twitter:@username` — Twitter/X handle
+- `x:@username` — X handle. Supersedes the v0 `twitter:` registration; legacy `twitter:` bindings remain valid and SHOULD be treated as `x:`.
 - `github:username` — GitHub username
 
 Earlier drafts also registered `email:`, `web:`, and `did:`; those are **retired for v0** (see SPEC.md §2.1.1). Unknown protocols are preserved in the signed message but MAY be ignored by verifiers.
@@ -29,7 +29,7 @@ Earlier drafts also registered `email:`, `web:`, and `did:`; those are **retired
 
 **Examples:**
 ```
-identities: github:alice,nostr:npub1alice...,twitter:@alice
+identities: github:alice,nostr:npub1alice...,x:@alice
 identities: dns:alice.com,github:alice
 identities:
 ```
@@ -89,9 +89,9 @@ identities:
 
 ### `scope`
 - **Type:** string (free-form UTF-8; ≤256 bytes recommended)
-- **Purpose:** Human context label (e.g., `twitter:@alice`, `web:alice.dev`)
+- **Purpose:** Human context label (e.g., `x:@alice`, `web:alice.dev`)
 - **Verifier behavior:** Display only
-- **Example:** `scope: twitter:@alice`
+- **Example:** `scope: x:@alice`
 
 ### `scoring`
 - **Type:** string (scoring algorithm identifier, e.g., `reference`, `tier`, `time-weighted`)
@@ -126,10 +126,12 @@ While identity bindings are self-asserted in the attestation, RPs can verify the
 - **Method 2:** `.well-known/orangecheck.json` file with attestation
 - **Method 3:** NIP-05 style verification
 
-### `twitter:@username`
-- **Method 1:** Tweet containing attestation ID
-- **Method 2:** Bio link to verification URL
-- **Method 3:** Pinned tweet with attestation
+### `x:@username`
+- **Method 1:** Post containing the attestation ID
+- **Method 2:** Bio link to the verification URL
+- **Method 3:** Pinned post with the attestation
+
+Legacy `twitter:@username` bindings use the same methods and remain valid.
 
 ### `github:username`
 - **Method 1:** Gist with attestation JSON

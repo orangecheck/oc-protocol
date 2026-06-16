@@ -63,10 +63,10 @@ The `identities:` field contains comma-separated protocol-prefixed identifiers:
 
 **Format:** `protocol:identifier[,protocol:identifier...]`
 
-**Registered Protocols (v0):**
+**Registered Protocols:**
 - `nostr:npub1...` — Nostr public key (bech32 npub format, 63 chars)
 - `dns:example.com` — DNS domain
-- `twitter:@username` — Twitter/X handle
+- `x:@username` — X handle. Supersedes the v0 `twitter:` registration; legacy `twitter:` bindings remain valid and verifiers SHOULD treat them as `x:`.
 - `github:username` — GitHub username
 
 Earlier drafts registered `email:`, `web:`, and `did:`; those are **retired for v0**. They may return in a future version once reliable, decentralized proof-of-control mechanisms are specified. Implementations encountering unknown protocols MUST follow the "unknown protocols preserved but MAY be ignored" rule below.
@@ -80,7 +80,7 @@ Earlier drafts registered `email:`, `web:`, and `did:`; those are **retired for 
 
 **Examples:**
 ```
-identities: nostr:npub1alice...,twitter:@alice
+identities: nostr:npub1alice...,x:@alice
 identities: dns:alice.com,github:alice,nostr:npub1alice...
 identities:
 ```
@@ -103,7 +103,7 @@ Optional **additional** lines follow, each `key: value` on its own line.
 - `network:` — `mainnet` (default), `testnet`, or `signet`
 - `publish:` — comma-separated list of publishing targets (e.g., `nostr,ipfs`)
 - `relay_hints:` — comma-separated Nostr relay URLs (e.g., `wss://relay1.com,wss://relay2.com`)
-- `scope:` — human label for context (e.g., `twitter:@alice`, `web:alice.dev`)
+- `scope:` — human label for context (e.g., `x:@alice`, `web:alice.dev`)
 - `scoring:` — string (algorithm id, e.g., `reference`, `tier`, `time-weighted`). **Advisory.** Verifiers **MAY** compute if supported; **MUST** still return raw metrics
 
 ### 2.3 ABNF **(normative)**

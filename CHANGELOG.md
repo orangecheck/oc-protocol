@@ -19,6 +19,10 @@ existing attestations.
 
 - _(nothing pending)_
 
+### Changed
+
+- **Identity protocol `twitter:` renamed to `x:`** (§2.1.1, `registry/extensions.md`). `x:@username` is the registered handle for the platform (rebranded from Twitter). Wire-compatible: legacy `twitter:` bindings remain valid and verifiers SHOULD treat them as `x:`. Existing conformance vectors (`tv03`, `tv09`) keep their `twitter:` messages + ids as legacy fixtures.
+
 ## [1.0] — 2026-04-25
 
 Spec is now stable. The protocol shipped earlier; this release marks the
