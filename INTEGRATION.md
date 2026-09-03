@@ -148,7 +148,7 @@ const result = await publishAttestation({
   npub: pubkey,
   relays: [
     'wss://relay.damus.io',
-    'wss://relay.nostr.band',
+    'wss://relay.ochk.io',
     'wss://nos.lol',
     'wss://relay.snort.social',
   ],
@@ -160,7 +160,7 @@ console.log('Failed:', result.failed);
 
 **Default Relays:**
 - `wss://relay.damus.io`
-- `wss://relay.nostr.band`
+- `wss://relay.ochk.io`
 - `wss://nos.lol`
 - `wss://relay.snort.social`
 
